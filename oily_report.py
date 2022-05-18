@@ -8,12 +8,16 @@ import sqlalchemy
 from scipy import signal
 
 
-def dataframe_creater(*args, start='01.01.2000', **kwarg):
-    """Function for converting navigation format to pandas dataframe
+def dataframe_creater(*args, start='01.01.1950', **kwarg):
+    """создает pandas Dataframe с данными из модели.
+         Принимает неограниченное количество параметров для
+          импорта, позволяет осуществлять импорт как по скважинам 
+          так и по группам заданием kwarg
+         function for converting navigation format to pandas dataframe
          *args - list of arguments to issue in the frame
              dimens - well, here is one of two:
-			well - for issuing a frame for wells
-			group - for issuing by group"""
+                        well - for issuing a frame for wells
+                        group - for issuing by group"""
     indicators = [x for x in args]
     name = ['Parametr{}'.format(x) for x in range(0, len(indicators))]
     indicators_dict = dict.fromkeys(['date', 'well']+name)
@@ -33,7 +37,17 @@ def dataframe_creater(*args, start='01.01.2000', **kwarg):
                     else:
                         continue
     except Exception as e:
-        raise e
+        m = kwarg['mod']
+        for w in kwarg['wells']:
+            for t in kwarg['step']:
+                if t.to_datetime() >= start_date:
+                    indicators_dict['date'].append(t.to_datetime())
+                    indicators_dict['well'].append(w.name)
+                    for i in indicators:
+                        indicators_dict[assos_dict[i]].append(
+                            i[m, w, t].to_list()[0])
+                else:
+                    continue
     result = pd.DataFrame(indicators_dict, index=indicators_dict['date'])
     return result.drop('date', axis=1)
 
@@ -75,96 +89,51 @@ def create_report_dir(path):
         os.chdir(path+r'\\reports')
 
 
-def interpolate_press_by_sipy(frame, a=3, b=0.1):
-	"""
-	more b less smoothing
-	more a less smoothing, this parametr work like smoothing window
-	"""
-	b, a = signal.butter(a, b)
-	if frame.shape[0] > 12:
-		frame.index = frame['date']
-		frame['SBHPH'] = signal.filtfilt(
-		    b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
-		frame['STHPH'] = signal.filtfilt(
-		    b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill'))
-		frame.loc[frame['BHPH'].interpolate(
-		    method='time').isnull(), 'SBHPH'] = np.NaN
-		frame.loc[frame['THPH'].interpolate(
-		    method='time').isnull(), 'STHPH'] = np.NaN
-		frame.loc[(frame['status'] == 'not_work'), 'SBHPH'] = np.NaN
-		frame.reset_index(drop=True, inplace=True)
-	else:
-		frame['SBHPH'] = np.NaN
-		frame['STHPH'] = np.NaN
-	return frame
-
-
-def interpolate_prod(frame, rollwin=12):
-    shift = int(round(((0.2+rollwin/3)*-1), 0))
-    frame.index = frame['date']
-    frame['SQLIQ'] = frame['QLIQ'].rolling(
-        rollwin, min_periods=2, win_type='triang').mean().shift(shift)
-    frame.loc[(frame['status'] == 'not_work'), 'SQLIQ'] = 0
-    frame.loc[(frame['status'] == 'inj'), 'SQLIQ'] = 0
-    frame.reset_index(drop=True, inplace=True)
-	frame['SWCT'] = frame['WCT'].rolling(
-	    rollwin, min_periods=2, win_type='triang').mean().shift(shift)
-    frame.loc[(frame['status'] == 'not_work'), 'SWCT'] = 0
-    frame.loc[(frame['status'] == 'inj'), 'SWCT'] = 0
-    frame.reset_index(drop=True, inplace=True)
+def interpolate_press_by_sipy(frame, a=15, b=0.1):
+    """функция сглаживает давление по DataFrame. 
+    Коэффициенты a и b для настройки. 
+    Чем выше a и ниже b тем сильнее сглаживание.
+    dataframe должен содержать столбцы [date, THPH, BHPH]"""
+    b, a = signal.butter(a, b)
+    if frame.shape[0] > 12:
+        frame.index = frame['date']
+        frame['SBHPH'] = signal.filtfilt(
+            b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[((frame['SBHPH'] > frame['THPH']) & (frame['status'] == 'prod')), 'THPH'] = np.NaN
+        frame['STHPH'] = signal.filtfilt(
+            b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[frame['BHPH'].interpolate(
+            method='time').isnull(), 'SBHPH'] = np.NaN
+        frame.loc[frame['THPH'].interpolate(
+            method='time').isnull(), 'STHPH'] = np.NaN
+        frame.loc[(frame['status'] == 'not_work'), 'SBHPH'] = np.NaN
+        frame.reset_index(drop=True, inplace=True)
+    else:
+        frame['SBHPH'] = np.NaN
+        frame['STHPH'] = np.NaN
     return frame
 
 
-def histor_smoothing(**kwarg):
-	"""Relives and smoothes pressure in source data
-	:arg1: TODO
-	:kwarg: navigator API keyword = {'grou':get_all_groups(),
-									'wells':get_all_wells(),
-									'mod': get_all_models(),
-									'step':get_all_timesteps()}
-	:returns: pandas DataFrame with smoothing press
-	"""
-	df = olr.dataframe_creater(wopr, wwpr, wwir, wbhph,
-	                           wthph, start='01.01.1955', **kwarg)
-	df = df.reset_index()
-	df.columns = ['date', 'well', 'QOIL', 'QWAT', 'QWIN', 'BHPH', 'THPH']
-	df['QLIQ'] = df['QOIL']+df['QWAT']
-	df['WCT'] = (df['QLIQ']-df['QOIL'])/df['QLIQ']
-	df['status'] = 'prod'
-	df.loc[df['QWIN'] > 0, 'status'] = 'inj'
-	df.loc[((df['QWIN'] == 0) & (df['QLIQ'] == 0)), 'status'] = 'not_work'
-	df['THPH'] = df['THPH'].replace([-999, 0], np.nan)
-	df['BHPH'] = df['BHPH'].replace([-999, 0], np.nan)
-	df.loc[((df['BHPH'] > df['THPH']) & (df['status'] == 'prod')), 'THPH'] = np.NaN
-	df = pd.DataFrame(df.groupby(by='well').apply(interpolate_press_by_sipy))
-	df.reset_index(drop=True, inplace=True)
-	df = pd.DataFrame(df.groupby(by='well').apply(interpolate_prod))
-	df.reset_index(drop=True, inplace=True)
-	df['SOIL'] = df['SQLIQ']*(1-df['SWCT'])
-	df['SPROD'] = df['SQLIQ']/(df['STHPH']-df['SBHPH'])
-    df['PROD']=df['QLIQ']/(df['THPH']-df['BHPH'])
-    df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
-	df['SPROD']=df['SQLIQ']/(df['STHPH']-df['SBHPH'])
-    df['PROD']=df['QLIQ']/(df['THPH']-df['BHPH'])
-    df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
-	return df
+def interpolate_prod_by_sipy(frame, a=3, b=0.1):
+    """функция сглаживает добычу по DataFrame. 
+    Коэффициенты a и b для настройки. 
+    Чем выше a и ниже b тем сильнее сглаживание.
+    dataframe должен содержать столбцы [date, WCT, QLIQ]"""
+    b, a = signal.butter(a, b)
+    if frame.shape[0] > 12:
+        frame.index = frame['date']
+        frame['SQLIQ'] = signal.filtfilt(
+            b, a, frame['QLIQ'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[(frame['status'] == 'not_work'), 'SQLIQ'] = 0
+        frame.loc[(frame['status'] == 'inj'), 'SQLIQ'] = 0
+        frame['SWCT'] = signal.filtfilt(
+            b, a, frame['WCT'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[(frame['status'] == 'not_work'), 'SWCT'] = 0
+        frame.loc[(frame['status'] == 'inj'), 'SWCT'] = 0
+        frame.reset_index(drop=True, inplace=True)
+    else:
+        frame['SQLIQ'] = np.NaN
+        frame['SWCT'] = np.NaN
+    return frame
 
 
-
-def economic_frame(arg1):
-    """TODO: Docstring for economic_frame.
-
-    :arg1: TODO
-    :returns: TODO
-
-    """
-    df = dataframe_creater(wlpt, wlpr, wopt, wopr, wwir, wwit, wbp9, wbhp ,start = '01.01.2020', **keyword)
-    df.columns=['date', 'well', 'lpt', 'lpr', 'opt', 'opr', 'wir', 'wit', 'press', 'bhp'] 
-    df['shifted']=df['lpt'].shift(1, fill_value=0)+df['wit'].shift(1, fill_value=0)
-    df['date']=pd.to_datetime(df['date'])
-    df=pd.DataFrame(df.groupby(by='well').apply(fond_analizator))
-    agg_dict = {'month_liq':'sum', 'month_oil':'sum', 'month_inj':'sum','prod':'sum', 'inj':'sum', 'drilled_p':'sum', \
-            'drilled_i':'sum', 'GTM':'sum', 'VNS':'sum', 'VDS':'sum'}
-    almost_all = df.loc[:,['date', 'month_liq', 'month_oil', 'month_inj','prod', 'inj', 'drilled_p', 'drilled_i', 'GTM', 'VNS', 'VDS']]\
-    .groupby(df['date'].dt.year).agg(agg_dict)
-    almost_all
