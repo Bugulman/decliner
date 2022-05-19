@@ -136,4 +136,11 @@ def interpolate_prod_by_sipy(frame, a=3, b=0.1):
         frame['SWCT'] = np.NaN
     return frame
 
+def model_frame(**kwarg):
+    df = dataframe_creater(
+        woprh, wwprh, wwirh, wbhph, wthph, wlpr, wbhp, wbp9, start='01.01.1955', **kwarg)
+    df = df.reset_index()
+    df.columns = ['date', 'well', 'QOIL', 'QWAT',
+                  'QWIN', 'BHPH', 'THPH', 'MQLIQ', 'MBHP', 'MPRES']
+    return df
 

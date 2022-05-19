@@ -1,32 +1,29 @@
 #Automaticaly recalculate=false
 #Single model=false
 from datetime import datetime
-import oily_report as olr
 import pandas as pd
 import datetime
 import os
 import numpy as np
 from scipy import signal
-import transliterate
-
+# import transliterate
+from oily_report import create_report_dir, model_frame, dataframe_creater
 
 
 keyword = {'wells': get_wells_from_filter ('Фильтр по скважинам 1'), 'mod': get_all_models(), 'step': get_all_timesteps()}
 
 
-def histor_smoothing(**kwarg):
+
+def histor_smoothing(frame_func,**kwarg):
     """Relives and smoothes pressure in source data
     :kwarg: navigator API keyword = {'grou':get_all_groups(),
-                                                                    'wells':get_all_wells(),
-                                                                    'mod': get_all_models(),
-                                                                    'step':get_all_timesteps()} 
-    :returns: pandas DataFrame with smoothing press
+    'wells':get_all_wells(),
+    'mod': get_all_models(),
+    'step':get_all_timesteps()} 
+    frame_func - function for create correct DataFrame. Need cols - [woprh, wwprh, wwirh, wbhph, wthph, wlpr, wbhp, wbp9]
+    :returns: pandas DataFrame with smoothing prodaction and pressure data
     """
-    df = dataframe_creater(
-        woprh, wwprh, wwirh, wbhph, wthph, wlpr, wbhp, wbp9, wstart='01.01.1955', **kwarg)
-    df = df.reset_index()
-    df.columns = ['date', 'well', 'QOIL', 'QWAT',
-                  'QWIN', 'BHPH', 'THPH', 'MQLIQ', 'MBHP', 'MPRES']
+    df=frame_func(**kwarg)
     df['QLIQ'] = df['QOIL']+df['QWAT']
     df['WCT'] = (df['QLIQ']-df['QOIL'])/df['QLIQ']
     df['status'] = 'prod'
@@ -51,24 +48,11 @@ def histor_smoothing(**kwarg):
     df['Pres_dif'] = df['Pres_dif'].cumsum()
     return df
 
-# создание папки reports в рабочем каталоге модели
-
-
-def create_report_dir(path):
-    '''Creates a result folder and sets it by default when writing files
-        path = r let to the model's sensor'''
-    if os.path.exists((path+r'\\reports')):
-        os.chdir(path+r'\\reports')
-    else:
-        os.chdir(path)
-        os.mkdir('reports')
-        os.chdir(path+r'\\reports')
-
 
 def main():
     print('lets go')
     create_report_dir(path=get_project_folder())
-    frame = histor_smoothing(**keyword)
+    frame = histor_smoothing(model_frame, keyword)
     # импорт сглаженных данных в навигатор
     bhp = graph(type='well', default_value=0)
     thp = graph(type='well', default_value=0)
@@ -112,5 +96,3 @@ def main():
     export(press_diff, name='Pressure diff', units='no')
     #frame['well']=frame['well'].apply(lambda x: transliterate.translit(x, 'ru'))
     frame.to_csv('productiviti.csv')
-
-main()
