@@ -8,7 +8,6 @@ import numpy as np
 # import sqlalchemy
 from scipy import signal
 
-
 def dataframe_creater(*args, start='01.01.1950', **kwarg):
     """создает pandas Dataframe с данными из модели.
          Принимает неограниченное количество параметров для
@@ -88,39 +87,23 @@ def create_report_dir(path):
         os.chdir(path)
         os.mkdir('reports')
         os.chdir(path+r'\\reports')
-import logging
 
-def interpolate_press_by_sipy(frame, a=5, b=0.1):
-    """функция сглаживает давление по DataFrame. 
-    Коэффициенты a и b для настройки. 
-    Чем выше a и ниже b тем сильнее сглаживание.
-    dataframe должен содержать столбцы [date, THPH, BHPH]"""
-    b, a = signal.butter(a, b)
-    if frame.shape[0] > 12:
-        frame.index = frame['date']
-        logging.info(f'well {frame.iloc[0,0]}')
-        frame['SBHPH'] = signal.filtfilt(
-            b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
-        frame.loc[((frame['SBHPH'] > frame['THPH']) & (frame['status'] == 'prod')), 'THPH'] = np.NaN
-        frame['STHPH'] = signal.filtfilt(
-            b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill'))
-        frame.loc[frame['BHPH'].interpolate(
-            method='time').isnull(), 'SBHPH'] = np.NaN
-        frame.loc[frame['THPH'].interpolate(
-            method='time').isnull(), 'STHPH'] = np.NaN
-        frame.loc[(frame['status'] == 'not_work'), 'SBHPH'] = np.NaN
-        frame.reset_index(drop=True, inplace=True)
-    else:
-        frame['SBHPH'] = np.NaN
-        frame['STHPH'] = np.NaN
-    return frame
-
-
-def interpolate_prod_by_sipy(frame, a=3, b=0.1):
-    """функция сглаживает добычу по DataFrame. 
-    Коэффициенты a и b для настройки. 
-    Чем выше a и ниже b тем сильнее сглаживание.
-    dataframe должен содержать столбцы [date, WCT, QLIQ]"""
+def interpolate_press_by_sipy(frame, a=2, b=0.1):
+	b, a = signal.butter(a,b)
+	if frame.shape[0]>12:
+		frame.index=frame['date']
+		frame['SBHPH']= signal.filtfilt(b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill')) 
+		frame['STHPH']= signal.filtfilt(b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill')) 
+		frame.loc[frame['BHPH'].interpolate(method='time').isnull(), 'SBHPH'] = np.NaN
+		frame.loc[frame['THPH'].interpolate(method='time').isnull(), 'STHPH'] = np.NaN
+		frame.loc[(frame['status']=='not_work'), 'SBHPH'] = np.NaN
+		frame.reset_index(drop=True, inplace=True)
+	else:
+		frame['SBHPH']= np.NaN 
+		frame['STHPH']= np.NaN
+	return frame
+	
+def interpolate_prod_by_sipy(frame, a=2, b=0.2):
     b, a = signal.butter(a, b)
     if frame.shape[0] > 12:
         frame.index = frame['date']
@@ -128,15 +111,18 @@ def interpolate_prod_by_sipy(frame, a=3, b=0.1):
             b, a, frame['QLIQ'].interpolate(method='time').fillna(method='bfill'))
         frame.loc[(frame['status'] == 'not_work'), 'SQLIQ'] = 0
         frame.loc[(frame['status'] == 'inj'), 'SQLIQ'] = 0
+        frame.loc[(frame['SQLIQ'] < 0), 'SQLIQ'] = 0
         frame['SWCT'] = signal.filtfilt(
             b, a, frame['WCT'].interpolate(method='time').fillna(method='bfill'))
         frame.loc[(frame['status'] == 'not_work'), 'SWCT'] = 0
         frame.loc[(frame['status'] == 'inj'), 'SWCT'] = 0
+        frame.loc[(frame['SWCT'] < 0), 'SWCT'] = 0
         frame.reset_index(drop=True, inplace=True)
     else:
         frame['SQLIQ'] = np.NaN
         frame['SWCT'] = np.NaN
     return frame
+
 
 def model_frame(**kwarg):
     df = dataframe_creater(

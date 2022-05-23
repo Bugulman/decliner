@@ -4,3 +4,6 @@ data/ГДИ.xlsx
 data/ГТМ_ГФИ.xlsx
 notebooks/.ipynb_checkpoints/DCA_banch-checkpoint.ipynb
 notebooks/.ipynb_checkpoints/drilling_analitic-checkpoint.ipynb
+data/onewell.pickle
+notebooks/.ipynb_checkpoints
+__pycache__

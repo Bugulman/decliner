@@ -13,39 +13,37 @@ from oily_report import create_report_dir, model_frame, dataframe_creater, inter
 # keyword = {'wells': get_wells_from_filter ('Фильтр по скважинам 1'), 'mod': get_all_models(), 'step': get_all_timesteps()}
 
 
-
 def histor_smoothing(df):
-    """Relives and smoothes pressure in source data
-    :kwarg: navigator API keyword = {'grou':get_all_groups(),
-    'wells':get_all_wells(),
-    'mod': get_all_models(),
-    'step':get_all_timesteps()} 
-    frame_func - function for create correct DataFrame. Need cols - [woprh, wwprh, wwirh, wbhph, wthph, wlpr, wbhp, wbp9]
-    :returns: pandas DataFrame with smoothing prodaction and pressure data
-    """
-    df['QLIQ'] = df['QOIL']+df['QWAT']
-    df['WCT'] = (df['QLIQ']-df['QOIL'])/df['QLIQ']
-    df['status'] = 'prod'
-    df.loc[df['QWIN'] > 0, 'status'] = 'inj'
-    df.loc[((df['QWIN'] == 0) & (df['QLIQ'] == 0)), 'status'] = 'not_work'
-    df['THPH'] = df['THPH'].replace([-999, 0], np.nan)
-    df['BHPH'] = df['BHPH'].replace([-999, 0], np.nan)
-    df.loc[((df['BHPH'] > df['THPH']) & (df['status'] == 'prod')), 'THPH'] = np.NaN
-    df = pd.DataFrame(df.groupby(by='well').apply(interpolate_press_by_sipy))
-    df.reset_index(drop=True, inplace=True)
-    df = pd.DataFrame(df.groupby(by='well').apply(interpolate_prod_by_sipy))
-    df.reset_index(drop=True, inplace=True)
-    df['SOIL'] = df['SQLIQ']*(1-df['SWCT'])
-    df['SPROD'] = df['SQLIQ']/(df['STHPH']-df['SBHPH'])
-    df['PROD'] = df['QLIQ']/(df['THPH']-df['BHPH'])
-    df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
-    df['SPROD'] = df['SQLIQ']/(df['STHPH']-df['SBHPH'])
-    df['PROD'] = df['QLIQ']/(df['THPH']-df['BHPH'])
-    # df['MPROD'] = df['MQLIQ']/(df['MPRES']-df['MBHP'])
-    df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
-    # df['Pres_dif']=(df['THPH']-df['MPRES'])**2
-    # df['Pres_dif'] = df['Pres_dif'].cumsum()
-    return df
+	"""Relives and smoothes pressure in source data
+	:arg1: TODO
+	:kwarg: navigator API keyword = {'grou':get_all_groups(),
+									'wells':get_all_wells(),
+									'mod': get_all_models(),
+									'step':get_all_timesteps()} 
+	:returns: pandas DataFrame with smoothing press
+	"""
+	df['QLIQ'] = df['QOIL']+df['QWAT']
+	df['WCT']=(df['QLIQ']-df['QOIL'])/df['QLIQ']
+	df['status'] = 'prod'
+	df.loc[df['QWIN']>0, 'status'] = 'inj'
+	df.loc[((df['QWIN']==0)&(df['QLIQ']==0)), 'status'] = 'not_work'
+	df.loc[((df['QWAT']>0)&(df['QOIL']==0)), 'status'] = 'water_prod'
+	df['THPH']=df['THPH'].replace([-999,0], np.nan)
+	df['BHPH']=df['BHPH'].replace([-999,0], np.nan)
+	df.loc[((df['BHPH']>df['THPH'])&(df['status']=='prod')), 'THPH'] = np.NaN
+	df=pd.DataFrame(df.groupby(by='well').apply(interpolate_press_by_sipy))
+	df.reset_index(drop=True, inplace=True)
+	df=pd.DataFrame(df.groupby(by='well').apply(interpolate_prod_by_sipy))
+	df.reset_index(drop=True, inplace=True)
+	df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
+	df['SOIL']=df['SQLIQ']*(1-df['SWCT'])
+	df['SPROD']=df['SQLIQ']/(df['STHPH']-df['SBHPH'])
+	df['PROD']=df['QLIQ']/(df['THPH']-df['BHPH'])
+	df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
+	df['SPROD']=df['SQLIQ']/(df['STHPH']-df['SBHPH'])
+	df['PROD']=df['QLIQ']/(df['THPH']-df['BHPH'])
+	df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
+	return df
 
 
 def main():
