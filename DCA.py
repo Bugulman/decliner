@@ -13,9 +13,9 @@ import transliterate
 from petbox import dca
 from scipy.optimize import curve_fit
 
-from smoother import main
+from smoother import histor_smoothing
 
-df = main()
+df = histor_smoothing()
 print(df.head())
 
 
@@ -65,8 +65,6 @@ def dec_predict(frame):
     prog['month_prod'] = mh.monthly_vol(prog.Time)
     frame = pd.merge(frame, prog, left_on='date', right_on='date', how='outer')
     frame['well'].fillna(method='ffill', inplace=True)
-    if name == '10785':
-        print(name, frame.tail(50))
     return frame
 
 

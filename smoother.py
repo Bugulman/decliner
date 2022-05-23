@@ -7,14 +7,14 @@ import os
 import numpy as np
 from scipy import signal
 # import transliterate
-from oily_report import create_report_dir, model_frame, dataframe_creater
+from oily_report import create_report_dir, model_frame, dataframe_creater, interpolate_press_by_sipy,interpolate_prod_by_sipy
 
 
-keyword = {'wells': get_wells_from_filter ('Фильтр по скважинам 1'), 'mod': get_all_models(), 'step': get_all_timesteps()}
+# keyword = {'wells': get_wells_from_filter ('Фильтр по скважинам 1'), 'mod': get_all_models(), 'step': get_all_timesteps()}
 
 
 
-def histor_smoothing(frame_func,**kwarg):
+def histor_smoothing(df):
     """Relives and smoothes pressure in source data
     :kwarg: navigator API keyword = {'grou':get_all_groups(),
     'wells':get_all_wells(),
@@ -23,7 +23,6 @@ def histor_smoothing(frame_func,**kwarg):
     frame_func - function for create correct DataFrame. Need cols - [woprh, wwprh, wwirh, wbhph, wthph, wlpr, wbhp, wbp9]
     :returns: pandas DataFrame with smoothing prodaction and pressure data
     """
-    df=frame_func(**kwarg)
     df['QLIQ'] = df['QOIL']+df['QWAT']
     df['WCT'] = (df['QLIQ']-df['QOIL'])/df['QLIQ']
     df['status'] = 'prod'
@@ -42,10 +41,10 @@ def histor_smoothing(frame_func,**kwarg):
     df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
     df['SPROD'] = df['SQLIQ']/(df['STHPH']-df['SBHPH'])
     df['PROD'] = df['QLIQ']/(df['THPH']-df['BHPH'])
-    df['MPROD'] = df['MQLIQ']/(df['MPRES']-df['MBHP'])
+    # df['MPROD'] = df['MQLIQ']/(df['MPRES']-df['MBHP'])
     df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
-    df['Pres_dif']=(df['THPH']-df['MPRES'])**2
-    df['Pres_dif'] = df['Pres_dif'].cumsum()
+    # df['Pres_dif']=(df['THPH']-df['MPRES'])**2
+    # df['Pres_dif'] = df['Pres_dif'].cumsum()
     return df
 
 

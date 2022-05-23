@@ -4,7 +4,8 @@ import os
 import datetime
 import getpass
 import urllib
-import sqlalchemy
+import numpy as np
+# import sqlalchemy
 from scipy import signal
 
 
@@ -87,9 +88,9 @@ def create_report_dir(path):
         os.chdir(path)
         os.mkdir('reports')
         os.chdir(path+r'\\reports')
+import logging
 
-
-def interpolate_press_by_sipy(frame, a=15, b=0.1):
+def interpolate_press_by_sipy(frame, a=5, b=0.1):
     """функция сглаживает давление по DataFrame. 
     Коэффициенты a и b для настройки. 
     Чем выше a и ниже b тем сильнее сглаживание.
@@ -97,6 +98,7 @@ def interpolate_press_by_sipy(frame, a=15, b=0.1):
     b, a = signal.butter(a, b)
     if frame.shape[0] > 12:
         frame.index = frame['date']
+        logging.info(f'well {frame.iloc[0,0]}')
         frame['SBHPH'] = signal.filtfilt(
             b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
         frame.loc[((frame['SBHPH'] > frame['THPH']) & (frame['status'] == 'prod')), 'THPH'] = np.NaN
