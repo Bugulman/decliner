@@ -44,6 +44,8 @@ def dec_predict(frame):
     except:
         qi, Di = curve_fit(MH, sub['Time'], np.array(sub['SOIL']), bounds=(0, [100, 0.2, 0.2, 0.99]), method='dogbox')
     logging.info(f'Скважина {name[0]},начало прогноза-{sub.date.min()}, qi-{round(qi[0],2)} Di-{round(qi[1],2)}')
+    pivot_info = {'well':name[0],'first_date':sub.date.min(), 
+                  'qi':round(qi[0],2), 'Di':round(qi[1],2), 'bi':round(qi[2],2), 'Dterm':round(qi[3], 2)}
     qi[3]=qi[1]*qi[3]
     mh = dca.MH(*qi)
     prog = pd.DataFrame(np.concatenate((sub.date, pd.date_range(sub.date.max(), periods=120, freq='MS')[1:])))#[1:]
@@ -54,4 +56,5 @@ def dec_predict(frame):
     prog['month_prod'] = mh.monthly_vol(prog.Time)
     frame=pd.merge(frame, prog, left_on='date', right_on ='date', how='outer')
     frame['well'].fillna(method='ffill', inplace=True)
-    return frame
+    pivot_info = pd.DataFrame([pivot_info])
+    return frame, pivot_info

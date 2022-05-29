@@ -12,16 +12,7 @@ from tqdm import tqdm
 
 logging.basicConfig(level=logging.DEBUG,format = "%(asctime)s - %(levelname)s - %(message)s")
 data = []
-headings = ['№ скваж', 'Дата', 'Горизонт_x',
-       'Кол-во часов экспл всего по доб. скваж',
-       'Добыча нефти за мес по скваж, т', 'Добыча воды за мес по скваж, т',
-       'Добыча воды за мес по скважине, м3',
-       'Кол-во часов работы всего по нагн. скваж',
-       'Общая закачка всего по скваж за мес, м3', 'Горизонт_y', 'BHPH', 'THPH',
-       'QOIL', 'QWAT', 'QWIN', 'QLIQ', 'well', 'date', 'WCT', 'status',
-       'SBHPH', 'STHPH', 'SQLIQ', 'SWCT', 'SPROD', 'SOIL', 'PROD']
-
-
+headings = ['well', 'first_date', 'qi', 'Di', 'bi', 'Dterm']
 
 def make_window(theme):
     sg.theme(theme)
@@ -152,8 +143,6 @@ def main():
             keyword = {'hist_file':[prod, press], 'gor_num':values['-GORIZON-']}
             result = hist_table_prepare(**keyword)
             df = histor_smoothing(result)
-            data = df.values.tolist()
-            window['-TABLE-'].update(values=data)
         # elif event == 'Popup':
         #     print("[LOG] Clicked Popup Button!")
         #     sg.popup("You pressed a button!", keep_on_top=True)
@@ -162,14 +151,19 @@ def main():
             print("[LOG] Clicked Test Progress Bar!")
             names = df.loc[(df.status == 'prod') & (df['date'] > '2010'), 'well'].unique()
             predict=pd.DataFrame(columns=['well', 'date', 'SOIL', 'QOIL', 'Time_x', 'Time_y', 'rate', 'month_prod'])
+
+            to_table=pd.DataFrame(columns=['well', 'first_date', 'qi', 'Di', 'bi', 'Dterm'])
             progress_bar = window['-PROGRESS BAR-']
             progress_bar.update(0, len(names))
             i=0
             for name, fr in df.loc[df.well.isin(names)].groupby('well'):
-                well_predict = dec_predict(fr)
-                predict = pd.concat([predict, well_predict], ignore_index=True)
+                well_predict, dca_param= dec_predict(fr)
+                # predict = pd.concat([predict, well_predict], ignore_index=True)
+                to_table = pd.concat([to_table, dca_param], ignore_index=True)
                 progress_bar.update(current_count=i + 1)
                 i+=1
+            data = to_table.values.tolist()
+            window['-TABLE-'].update(values=data)
             print("[LOG] Progress bar complete!")
         # elif event == "-GRAPH-":
         #     graph = window['-GRAPH-']       # type: sg.Graph
