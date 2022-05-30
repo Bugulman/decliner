@@ -4,7 +4,7 @@ import pandas as pd
 import logging
 import pickle
 from oily_report import interpolate_press_by_sipy
-from DCA import dec_predict
+from DCA import prod_predict, declane_fit, predict_viz
 from tqdm import tqdm
 
 logging.basicConfig(level=logging.DEBUG,format = "%(asctime)s - %(levelname)s - %(message)s")
@@ -24,9 +24,22 @@ with open(r'data/onewell.pickle','rb') as f:
     df=pickle.load(f)
 
 names = df.loc[(df.status == 'prod') & (df['date'] > '2010'), 'well'].unique()
-predict=pd.DataFrame(columns=['well', 'date', 'SOIL', 'QOIL', 'Time_x', 'Time_y', 'rate', 'month_prod'])
+# predict=pd.DataFrame(columns=['well', 'date', 'SOIL', 'QOIL', 'Time_x', 'Time_y', 'rate', 'month_prod'])
+dca_full=pd.DataFrame(columns=['well', 'first_date', 'qi', 'Di', 'bi', 'Dterm'])
 for name, fr in tqdm(df.loc[df.well.isin(names)].groupby('well')):
-    well_predict = dec_predict(fr)
-    predict = pd.concat([predict, well_predict], ignore_index=True)
-predict.to_csv(f'decline_M.csv')
+    dca_param= declane_fit(fr)
+    dca_full = pd.concat([dca_full, dca_param], ignore_index=True)
+
+# for name, fr in tqdm(df.loc[df.well.isin(names)].groupby('well')):
+dca_full.index=dca_full.well
+t = dca_full.loc['975'].values
+f=df.loc[df['well']=='975']
+date = t[1]
+params = t[2]
+rate = prod_predict(date, params)
+__import__('pdb').set_trace()
+predict_viz(f, date , params)
+print(rate)
+
+# predict.to_csv(f'decline_M.csv')
 

@@ -1,18 +1,27 @@
+from datetime import datetime
 import PySimpleGUI as sg
 from files_func import hist_table_prepare
 from smoother import histor_smoothing
 import pandas as pd
 import logging
 import pickle
-from oily_report import interpolate_press_by_sipy
 from DCA import dec_predict
 import random, string
-from tqdm import tqdm
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
+from matplotlib.figure import Figure
 
 
 logging.basicConfig(level=logging.DEBUG,format = "%(asctime)s - %(levelname)s - %(message)s")
 data = []
 headings = ['well', 'first_date', 'qi', 'Di', 'bi', 'Dterm']
+
+
+def draw_figure(canvas, figure, loc=(0, 0)):
+    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
+    figure_canvas_agg.draw()
+    figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
+    return figure_canvas_agg
+
 
 def make_window(theme):
     sg.theme(theme)
@@ -37,13 +46,16 @@ def make_window(theme):
                  # sg.OptionMenu(values=('Option 1', 'Option 2', 'Option 3'),  k='-OPTION MENU-'),],
                 # [sg.Spin([i for i in range(1,11)], initial_value=10, k='-SPIN-'), sg.Text('Spin')],
                 # [sg.Multiline('Demo of a Multi-Line Text Element!\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nYou get the point.', size=(45,5), expand_x=True, expand_y=True, k='-MLINE-')],
-        [sg.Button('IMPORT', key='-IMPORT-'),  sg.Button(image_data=sg.DEFAULT_BASE64_ICON, key='-logo-')]]
+                [sg.Button('IMPORT', key='-IMPORT-'),  sg.Button(image_data=sg.DEFAULT_BASE64_ICON, key='-logo-')]]
 
-    data_preparation = [[sg.T('Теммп падения скважин')],
-               [sg.Image(data=sg.DEFAULT_BASE64_ICON,  k='-IMAGE-'),sg.Button('Подготовка данных', key='-PREPARE-')],
-               [sg.ProgressBar(100, orientation='h', size=(20, 20), key='-PROGRESS BAR-'), sg.Button('Test Progress bar')],
+    data_preparation = [[sg.T('Темп падения скважин')],
+               [sg.Image(data=sg.DEFAULT_BASE64_ICON,  k='-IMAGE-'),
+                sg.Button('Подготовка данных', key='-PREPARE-')],
+               [sg.ProgressBar(100, orientation='h', size=(20, 20), key='-PROGRESS BAR-'), 
+                sg.Button('Расчет падения по скважинам')],
                 [sg.Table(values=data, headings=headings, max_col_width=5,
-                    auto_size_columns=False,
+                    auto_size_columns=True,
+                    background_color='black',
                     display_row_numbers=True,
                     justification='right',
                     num_rows=20,
@@ -54,29 +66,24 @@ def make_window(theme):
                     expand_x=True,
                     expand_y=True,
                     enable_click_events=True,           # Comment out to not enable header and other clicks
-                    tooltip='This is a table')],
+                    tooltip='Информация по скважинам')],
                 ]
 
     logging_layout = [[sg.Text("Anything printed will display here!")],
-                      [sg.Multiline(size=(60,15), font='Courier 8', expand_x=True, expand_y=True, write_only=True,
-                                    reroute_stdout=True, reroute_stderr=True, echo_stdout_stderr=True, autoscroll=True, auto_refresh=True)]
+                      [sg.Multiline(size=(60,15), font='Courier 8', expand_x=True,
+                                    expand_y=True, write_only=True,
+                                    reroute_stdout=True, reroute_stderr=True, echo_stdout_stderr=True,
+                                    autoscroll=True, auto_refresh=True)]
                       # [sg.Output(size=(60,15), font='Courier 8', expand_x=True, expand_y=True)]
                       ]
     
-    # graphing_layout = [[sg.Text("Anything you would use to graph will display here!")],
-    #                   [sg.Graph((200,200), (0,0),(200,200),background_color="black", key='-GRAPH-', enable_events=True,
-    #                             right_click_menu=graph_right_click_menu_def)],
-    #                   [sg.T('Click anywhere on graph to draw a circle')],
-    #                   [sg.Table(values=data, headings=headings, max_col_width=25,
-    #                             background_color='black',
-    #                             auto_size_columns=True,
-    #                             display_row_numbers=True,
-    #                             justification='right',
-    #                             num_rows=2,
-    #                             alternating_row_color='black',
-    #                             key='-TABLE-',
-    #                             row_height=25)]]
-
+    graphing_layout = [[sg.Text("Anything you would use to graph will display here!")],
+                        [sg.Canvas(size=(640, 480), key='-CANVAS-')],
+                        [sg.Text('Progress through the data')],
+                        [sg.Slider(range=(2000, datetime.now().year), size=(60, 10),
+                            orientation='h', key='-SLIDER-')],
+                        [sg.Slider(range=(10, 500), default_value=40, size=(40, 10),
+                            orientation='h', key='-SLIDER-DATAPOINTS-')]]
     # popup_layout = [[sg.Text("Popup Testing")],
     #                 [sg.Button("Open Folder")],
     #                 [sg.Button("Open File")]]
@@ -88,11 +95,12 @@ def make_window(theme):
                       enable_events = True)],
                       [sg.Button("Set Theme")]]
     
-    layout = [ [sg.MenubarCustom(menu_def, key='-MENU-', font='Courier 15', tearoff=True)],
-                    [sg.Text('DCA', size=(38, 1), justification='center', font=("Helvetica", 16), relief=sg.RELIEF_RIDGE, k='-TEXT HEADING-', enable_events=True)]]
+    layout = [[sg.MenubarCustom(menu_def, key='-MENU-', font='Courier 15', tearoff=True)],
+                    [sg.Text('DCA', size=(45, 1), justification='center', font=("Helvetica", 16), 
+                             relief=sg.RELIEF_RIDGE, k='-TEXT HEADING-', enable_events=True)]]
     layout +=[[sg.TabGroup([[  sg.Tab('Ввод данных', input_layout),
                                sg.Tab('Темп падения', data_preparation),
-                               # sg.Tab('Graphing', graphing_layout),
+                               sg.Tab('Суммарный график', graphing_layout),
                                # sg.Tab('Popups', popup_layout),
                                sg.Tab('Theming', theme_layout),
                                sg.Tab('Output', logging_layout)]], key='-TAB GROUP-', expand_x=True, expand_y=True),
@@ -151,7 +159,6 @@ def main():
             print("[LOG] Clicked Test Progress Bar!")
             names = df.loc[(df.status == 'prod') & (df['date'] > '2010'), 'well'].unique()
             predict=pd.DataFrame(columns=['well', 'date', 'SOIL', 'QOIL', 'Time_x', 'Time_y', 'rate', 'month_prod'])
-
             to_table=pd.DataFrame(columns=['well', 'first_date', 'qi', 'Di', 'bi', 'Dterm'])
             progress_bar = window['-PROGRESS BAR-']
             progress_bar.update(0, len(names))
@@ -194,8 +201,8 @@ def main():
     exit(0)
 
 if __name__ == '__main__':
-    sg.theme('black')
-    sg.theme('dark red')
-    sg.theme('dark green 7')
+    sg.theme('DarkBlue')
+    # sg.theme('dark red')
+    # sg.theme('dark green 7')
     # sg.theme('DefaultNoMoreNagging')
     main()
