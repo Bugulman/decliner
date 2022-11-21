@@ -5,7 +5,8 @@ import os
 import schedule
 import time
 
-# for direc, some, file in os.walk(r"m:\dell-3x36-gpu\cc02\MINN_15.12_SCH\RESULTS"):
+# скрипт для сквачивания рабочих файлов из папки кластера в рабочую папку модели
+
 def copyfiles(from_filepath, to_filepath):
     """copy files for schedule
 
