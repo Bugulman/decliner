@@ -1,18 +1,13 @@
-#Automaticaly recalculate=true
-#Single model=false
 # Automaticaly recalculate=true
 # Single model=false
-import oily_report as olr
-import pandas as pd
-import pprint
-import os
+# Automaticaly recalculate=true
+# Single model=false
 import datetime
 import getpass
-import urllib
-import sqlalchemy
+import oily_report as olr
 
 keyword = {'grou': get_all_groups(),
-           'wells': get_wells_from_filter ('Фильтр по скважинам 1'),
+           'wells': get_wells_from_filter('Фильтр по скважинам 1'),
            'mod': get_all_models(),
            'step': get_all_timesteps()}
 user = getpass.getuser()

@@ -1,12 +1,12 @@
-#Automaticaly recalculate=true
-#Single model=false
+# Automaticaly recalculate=true
+# Single model=false
+
+import datetime
 import pickle
 import os
-import pprint
 import h5py
-import numpy as np
-import pandas as pd
-import datetime
+# import numpy as np
+# import pandas as pd
 
 
 def __init_script__():
@@ -16,6 +16,7 @@ def __init_script__():
 
 hdf5File = os.path.join(get_project_folder(), 'reports',
                         'FRACK', 'wells_base.hdf5')
+
 
 def connecter(hdf5File):
     def Hdf5File_connect(func):
@@ -120,37 +121,41 @@ def shut_inj():
             set_inj_limit(wells=w, fluid="water", rate=0)
     script_off()
 
+
 def dobstop(lim):
     """script stoped all injected wells"""
     stoped_wells = {}
     for w in get_all_wells():
         if wwct[w] > lim:
-            names=w.name
+            names = w.name
             print(names)
-            stoped_wells[names]=float(wlpr[w])
+            stoped_wells[names] = float(wlpr[w])
             set_prod_limit(wells=w, lrat=0)
     with open(r"d:\project\Minnib_project\SCHED_PATTERNS\new_wells.pickle", 'wb') as target:
         pickle.dump(stoped_wells, target)
         print(stoped_wells)
     script_off()
 
+
 def drilling_schedule(well_per_year):
     """open limit position of new wells for product or inject"""
-    wlist =['P9598A', 'P3442A', 'P32005', 'P32000', 'P20534A', 'P474D', 'P472D', 'P471D', 'P3456D', 'P3456A', 'P3455D', 'P20682A', 'P20680', 'P20216A', 'P32664', 'P258A', 'P257D', 'P20630', 'P20350', 'P20277', 'P434D', 'P3486D', 'P3486B', 'P3486A', 'P32647', 'P32645A', 'P32022', 'P20132', 'P20120A', 'P32666', 'P178A', 'P10789A', 'P10753A', 'P9530A', 'P20158A', 'P20156A', 'P32754', 'P32751', 'P304D', 'P20581', 'P20221A', 'P10862A', 'P10861A', 'P467D', 'P464D', 'P32759', 'P20685', 'P20450B', 'P20181A', 'P32775', 'P20164', 'P32710', 'P3162A', 'P14987', 'P9541B', 'P442A', 'P20481A', 'P20127A', 'P20117', 'P484A', 'P3472A', 'P20559', 'P15713A', 'P1220A', 'P490D', 'P20596', 'P20540', 'P20526', 'P14963A', 'P3454A', 'P3453A', 'P32760', 'P20672', 'P20435', 'P20337A', 'P14983A', 'P3190A', 'P3189D', 'P20105A', 'P9635A', 'P32747', 'P229A', 'P10860A', 'P197A', 'P14993A', 'P10863A', 'P32725', 'P10767A', 'P32672A', 'P32672', 'P20622', 'P177A', 'P14918', 'P9501A', 'P9500A', 'P9555A', 'P3475A', 'P20378', 'P15672A', 'P9536A', 'P283A', 'P10841A', 'P9622A', 'P20149A', 'P196D', 'P3193A', 'P20518A', 'P10852A', 'P9626A', 'P203A', 'P14986', 'P32755', 'P10820D', 'P10819A', 'P20655', 'P32728A', 'P14974D', 'P1218D', 'P679A', 'P3167A', 'P3166A', 'P3139B', 'P20656A', 'P20692', 'P20176A', 'P10821A', 'P32763', 'P20646', 'P20492', 'P32799', 'P3199A', 'P20479A', 'P467A', 'P32758', 'P20186A', 'P32742', 'P32741', 'P20374A', 'P246D', 'P192D', 'P9585D', 'P9564A', 'P3695A', 'P32660A', 'P10769A', 'P9597A', 'P241D', 'P32767', 'P20997', 'P14931D', 'P10789B', 'P32703', 'P20590A', 'P15642A', 'P32715', 'P15639A', 'P3101A', 'P14938A', 'P3466A', 'P32736', 'P20327A', 'P504A', 'P32787A', 'P20519', 'P10825A', 'P32746A', 'P20455A', 'P20643', 'P20331A', 'P32766', 'P15782A', 'P20358A', 'P235A', 'P20461A', 'P10754A', 'P9621A', 'P3073A', 'P20546', 'P14966A', 'P20769', 'P20728', 'P32700', 'P532A', 'P9629A', 'P59A', 'P20697', 'P175A', 'P20388A', 'P3097A', 'P273D', 'P9545A', 'P9636A', 'P20324A', 'P20547', 'P10777A', 'P20D', 'P3696A', 'P10818A', 'P9649A', 'P20464', 'P10855A', 'P266D', 'P3188A', 'P20436A', 'P20365', 'P20554', 'P10847A', 'P20364A', 'P32790', 'P15720A', 'P20223A', 'P20217', 'P1968A']
+    wlist = ['P9598A', 'P3442A', 'P32005', 'P32000', 'P20534A', 'P474D', 'P472D', 'P471D', 'P3456D', 'P3456A', 'P3455D', 'P20682A', 'P20680', 'P20216A', 'P32664', 'P258A', 'P257D', 'P20630', 'P20350', 'P20277', 'P434D', 'P3486D', 'P3486B', 'P3486A', 'P32647', 'P32645A', 'P32022', 'P20132', 'P20120A', 'P32666', 'P178A', 'P10789A', 'P10753A', 'P9530A', 'P20158A', 'P20156A', 'P32754', 'P32751', 'P304D', 'P20581', 'P20221A', 'P10862A', 'P10861A', 'P467D', 'P464D', 'P32759', 'P20685', 'P20450B', 'P20181A', 'P32775', 'P20164', 'P32710', 'P3162A', 'P14987', 'P9541B', 'P442A', 'P20481A', 'P20127A', 'P20117', 'P484A', 'P3472A', 'P20559', 'P15713A', 'P1220A', 'P490D', 'P20596', 'P20540', 'P20526', 'P14963A', 'P3454A', 'P3453A', 'P32760', 'P20672', 'P20435', 'P20337A', 'P14983A', 'P3190A', 'P3189D', 'P20105A', 'P9635A', 'P32747', 'P229A', 'P10860A', 'P197A', 'P14993A', 'P10863A', 'P32725', 'P10767A', 'P32672A', 'P32672', 'P20622', 'P177A', 'P14918', 'P9501A', 'P9500A', 'P9555A', 'P3475A', 'P20378', 'P15672A', 'P9536A', 'P283A', 'P10841A', 'P9622A', 'P20149A', 'P196D', 'P3193A', 'P20518A',
+             'P10852A', 'P9626A', 'P203A', 'P14986', 'P32755', 'P10820D', 'P10819A', 'P20655', 'P32728A', 'P14974D', 'P1218D', 'P679A', 'P3167A', 'P3166A', 'P3139B', 'P20656A', 'P20692', 'P20176A', 'P10821A', 'P32763', 'P20646', 'P20492', 'P32799', 'P3199A', 'P20479A', 'P467A', 'P32758', 'P20186A', 'P32742', 'P32741', 'P20374A', 'P246D', 'P192D', 'P9585D', 'P9564A', 'P3695A', 'P32660A', 'P10769A', 'P9597A', 'P241D', 'P32767', 'P20997', 'P14931D', 'P10789B', 'P32703', 'P20590A', 'P15642A', 'P32715', 'P15639A', 'P3101A', 'P14938A', 'P3466A', 'P32736', 'P20327A', 'P504A', 'P32787A', 'P20519', 'P10825A', 'P32746A', 'P20455A', 'P20643', 'P20331A', 'P32766', 'P15782A', 'P20358A', 'P235A', 'P20461A', 'P10754A', 'P9621A', 'P3073A', 'P20546', 'P14966A', 'P20769', 'P20728', 'P32700', 'P532A', 'P9629A', 'P59A', 'P20697', 'P175A', 'P20388A', 'P3097A', 'P273D', 'P9545A', 'P9636A', 'P20324A', 'P20547', 'P10777A', 'P20D', 'P3696A', 'P10818A', 'P9649A', 'P20464', 'P10855A', 'P266D', 'P3188A', 'P20436A', 'P20365', 'P20554', 'P10847A', 'P20364A', 'P32790', 'P15720A', 'P20223A', 'P20217', 'P1968A']
     print(well_per_year)
     # for well in get_wells_by_mask ('P*'):
     #     wlist.append(well.name)
     # wlist =[]
-    count = 1 
+    count = 1
     for w in wlist:
         well = get_well_by_name(w)
-        if wopt[well]==0 and count<=well_per_year:
+        if wopt[well] == 0 and count <= well_per_year:
             print(w, well_per_year, count)
-            set_well_status(wells = w, status = 'open')
-            set_prod_limit(wells=w,control_mode='LRAT', lrat=100, orat=15, bhp=70)
+            set_well_status(wells=w, status='open')
+            set_prod_limit(wells=w, control_mode='LRAT',
+                           lrat=100, orat=15, bhp=70)
             # reset_prod_limit(wells=w, bhp=70)
-            count+=1
-        elif wdraw[well]<5 and wbhp[well]>50:
+            count += 1
+        elif wdraw[well] < 5 and wbhp[well] > 50:
             press = wbhp[well]-5
             # set_prod_limit(wells=well, lrat=lg)
             reset_prod_limit(wells=well, bhp=press)
@@ -159,7 +164,7 @@ def drilling_schedule(well_per_year):
             press = wbhp[well]
             # set_prod_limit(wells=well, lrat=lg)
             reset_prod_limit(wells=well, bhp=press)
-    script_set_options(min_interval=datetime.timedelta(days = 26))
+    script_set_options(min_interval=datetime.timedelta(days=26))
 
 
 def stopstart():
@@ -171,16 +176,17 @@ def stopstart():
             set_prod_limit(wells=key, lrat=values)
     script_off()
 
+
 def inj_to_prod():
     """script for continue to prod stoped wells"""
-    welllist = ['I4035D', 'I406D', 'I3112A', 'I32777', 'I3187A', 'I1974A', 'I32701', 'I20309', 'I32712', 'I20213A', 'I20227A', 'I20107', 'I20280', 'I20266', 'I9567A', 'I20510A', 'I32656', 'I3111D', 'I3140A', 'I3142D', 'I32769', 'I32771', 'I3487D', 'I20443A', 'I20584', 'I20584A', 'I20555', 'I32731', 'I485D', 'I3159A', 'I3166D', 'I681A', 'I10864A', 'I20239', 'I15612A', 'I20598', 'I20599', 'I20600', 'I32688', 'I32690', 'I9572A', 'I20197A', 'I20580', 'I32749', 'I20450A', 'I20681', 'I20686', 'I469D', 'I14937A', 'I14939A', 'I20349A', 'I20406A', 'I10827A', 'I20460', 'I32761', 'I20240', 'I20244', 'I32735', 'I3464D', 'I10896', 'I20369', 'I3116A', 'I32762', 'I32764', 'I32765', 'I20265', 'I20495', 'I20539', 'I20597', 'I32691', 'I20142', 'I32009', 'I9648D', 'I20242', 'I20562', 'I20565', 'I217A', 'I217D', 'I3466D']
+    welllist = ['I4035D', 'I406D', 'I3112A', 'I32777', 'I3187A', 'I1974A', 'I32701', 'I20309', 'I32712', 'I20213A', 'I20227A', 'I20107', 'I20280', 'I20266', 'I9567A', 'I20510A', 'I32656', 'I3111D', 'I3140A', 'I3142D', 'I32769', 'I32771', 'I3487D', 'I20443A', 'I20584', 'I20584A', 'I20555', 'I32731', 'I485D', 'I3159A', 'I3166D', 'I681A', 'I10864A', 'I20239', 'I15612A', 'I20598', 'I20599', 'I20600', 'I32688',
+                'I32690', 'I9572A', 'I20197A', 'I20580', 'I32749', 'I20450A', 'I20681', 'I20686', 'I469D', 'I14937A', 'I14939A', 'I20349A', 'I20406A', 'I10827A', 'I20460', 'I32761', 'I20240', 'I20244', 'I32735', 'I3464D', 'I10896', 'I20369', 'I3116A', 'I32762', 'I32764', 'I32765', 'I20265', 'I20495', 'I20539', 'I20597', 'I32691', 'I20142', 'I32009', 'I9648D', 'I20242', 'I20562', 'I20565', 'I217A', 'I217D', 'I3466D']
     for w in get_all_wells():
         if w.name in welllist:
             print(w.name)
             set_prod_limit(wells=w, lrat=100)
             reset_prod_limit(wells=w, bhp=70)
     script_off()
-
 
 
 def list_creater():
@@ -214,10 +220,11 @@ def read_wells_frack(file_name='wells_base.hdf5'):
     :file: file with frack param for take list of wellnames
     :returns: list of wellnames
     """
-    hdf5File = os.path.join(get_project_folder(), 'reports', 'FRACK', file_name)
+    hdf5File = os.path.join(get_project_folder(),
+                            'reports', 'FRACK', file_name)
     for w in get_all_wells():
         res = hdf5.get_well(w.name)
-        if len(res)>1:
+        if len(res) > 1:
             for x in res:
                 add_keyword(f'WFRACP\n{x}')
         else:
@@ -235,3 +242,18 @@ def grp_control(path):
             reset_prod_limit(wells=w, bhp=wbhp[w])
     script_off()
 
+
+def inj_control(press_limit):
+    '''press_limit - целевое пластовое давление для расчета'''
+    for w in get_all_wells():
+        if wwir[w] > 0:
+            new_rej = (wbhp[w]*press_limit)/wbp9[w]
+            reset_inj_limit(wells=w, bhp=new_rej) if new_rej > wbp9[w] else reset_inj_limit(
+                wells=w, bhp=wbp9[w]+10)
+            # set_inj_limit(wells=w, fluid='water', control_mode='bhp', bhp=(wbhp[w]*press_limit)/wbp9[w])
+            print(
+                f' Скважина {w.name} сменала контроль на {(wbhp[w]*press_limit)/wbp9[w]}')
+        else:
+            continue
+    script_set_options(
+        max_exec_count=3, min_interval=datetime.timedelta(days=180))
