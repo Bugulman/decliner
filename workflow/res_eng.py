@@ -33,6 +33,8 @@ def res_eng (variables = res_eng_variables):
         import getpass
         import pandas as pd
 
+
+
         prod_data = get_all_wells_production_tables ()[0]
         w = get_well_by_name (name='10002')
 
@@ -70,8 +72,9 @@ def res_eng (variables = res_eng_variables):
         end_wf_item (index = 1)
 
 
-    begin_wf_item (index = 2, is_custom_code = True)
-    exec ("""
+    if False:
+        begin_wf_item (index = 2, is_custom_code = True)
+        exec ("""
 from datetime import datetime
 import getpass
 import os
@@ -116,6 +119,36 @@ frame = dataframe_creater(start=\'01.01.2010\', **keyword)
 frame.to_csv(f\'wells_frame_{user}_{date}.csv\')
 print(os.getcwd())
 """)
-    end_wf_item (index = 2)
+        end_wf_item (index = 2)
+
+
+    begin_wf_item (index = 3, is_custom_code = True, name = "через библиотеку")
+    exec ("""
+import getpass
+import os
+from oily_report import df_from_histtab, histor_smoothing
+from datetime import datetime
+
+
+paramert_list= [\'oil\', \'water\', \'gas\', \'liquid\', \'resv\', \'thp\', \'bhp\', \'wefac\']
+
+keyword = {\'wells\': get_well_filter_by_name (name=\'14\').get_wells (),
+           \'mod\': get_all_wells_production_tables ()[0],
+           \'step\': get_all_timesteps()}
+
+user = getpass.getuser()
+date = datetime.strftime(datetime.now(), \'%d.%m.%y\')
+
+paramert_list= [\'oil\', \'water\', \'gas\', \'water_injection\', \'bhp\', \'thp\']
+
+
+frame = df_from_histtab(paramert_list=paramert_list, start=\'01.01.2010\', **keyword)
+frame.reset_index(inplace=True)
+print(frame.head())
+smooth_frame = histor_smoothing(frame, gas=True)
+smooth_frame.to_csv(f\'smoooth_wells_{user}_{date}.csv\')
+print(os.getcwd())
+""")
+    end_wf_item (index = 3)
 
 
