@@ -175,7 +175,7 @@ def interpolate_prod_by_sipy(frame, a=2, b=0.2, gas=False):
             b, a, frame['GOR'].interpolate(method='time').fillna(method='bfill'))
         frame.loc[(frame['status'] == 'not_work'), ['SWCT', 'SGOR']] = 0
         frame.loc[(frame['status'] == 'inj'), ['SWCT', 'SGOR']] = 0
-        frame.loc[(frame['SWCT'] < 0), ['SWCT', 'SGOR']] = 0
+        frame.loc[(frame['SWCT'] < 0), 'SWCT'] = 0
     else:
         frame['SQLIQ'] = np.NaN
         frame['SWCT'] = np.NaN
@@ -215,11 +215,12 @@ def histor_smoothing(df, gas=False):
     gas_rate(optional)|water_injection|bottemhole_pressure|pres_meash
     :returns: pandas DataFrame with smoothing press
     """
+    df.date=pd.to_datetime(df.date)
     if gas == False:
         df.columns = ['date', 'well', 'QOIL', 'QWAT',
                       'QWIN', 'BHPH', 'THPH']
     else:
-        df.columns = ['date', 'well', 'QOIL', 'QWAT', 'QGAS'
+        df.columns = ['date', 'well', 'QOIL', 'QWAT', 'QGAS',
                       'QWIN', 'BHPH', 'THPH']
         df['GOR'] = df['QGAS']/df['QOIL']
 
@@ -241,15 +242,20 @@ def histor_smoothing(df, gas=False):
             interpolate_prod_by_sipy, gas=True))
     df.reset_index(drop=True, inplace=True)
     df['SOIL'] = df['SQLIQ']*(1-df['SWCT'])
+    if gas == True:
+        df['SQGAS'] = df['SOIL']*df['SGOR']
+    else:
+        pass
     df['SPROD'] = df['SQLIQ']/(df['STHPH']-df['SBHPH'])
     df['PROD'] = df['QLIQ']/(df['THPH']-df['BHPH'])
     df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
     df['SPROD'] = df['SQLIQ']/(df['STHPH']-df['SBHPH'])
     df['PROD'] = df['QLIQ']/(df['THPH']-df['BHPH'])
-    df = pd.DataFrame(df.groupby(by='well').apply(prod_smooth))
-    df.reset_index(drop=True, inplace=True)
+    # TODO: разобраться с работой данного функционала. Вылетают ошибки, но не на самом удачном примере
+    # df = pd.DataFrame(df.groupby(by='well').apply(prod_smooth))
+    # df.reset_index(drop=True, inplace=True)
     df.loc[df['QLIQ'].isnull(), 'SPROD'] = np.NaN
-    df['SBHPH'] = df['STHPH']-(df['SQLIQ']/df['PROD_AV'])
+    # df['SBHPH'] = df['STHPH']-(df['SQLIQ']/df['PROD_AV'])
     df.loc[(df['SBHPH'] <= 0), 'SBHPH'] = np.NaN
     df['SBHPH'].fillna(method='bfill')
     return df
