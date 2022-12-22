@@ -1,10 +1,9 @@
-import pandas as pd
-import pprint
-import os
-import datetime
 import getpass
-import urllib
+import os
+from datetime import datetime
+
 import numpy as np
+import pandas as pd
 # import sqlalchemy
 from scipy import signal
 
@@ -12,7 +11,7 @@ from scipy import signal
 def dataframe_creater(*args, start='01.01.1950', **kwarg):
     """создает pandas Dataframe с данными из модели.
          Принимает неограниченное количество параметров для
-          импорта, позволяет осуществлять импорт как по скважинам 
+          импорта, позволяет осуществлять импорт как по скважинам
           так и по группам заданием kwarg
          function for converting navigation format to pandas dataframe
          *args - list of arguments to issue in the frame
@@ -24,7 +23,7 @@ def dataframe_creater(*args, start='01.01.1950', **kwarg):
     indicators_dict = dict.fromkeys(['date', 'well']+name)
     indicators_dict = {x: [] for x in indicators_dict.keys()}
     assos_dict = {x: y for x, y in zip(indicators, name)}
-    start_date = datetime.datetime.strptime(start, '%d.%m.%Y')
+    start_date = datetime.strptime(start, '%d.%m.%Y')
     try:
         for m in kwarg['mod']:
             for w in kwarg['wells']:
@@ -53,6 +52,39 @@ def dataframe_creater(*args, start='01.01.1950', **kwarg):
     return result.drop('date', axis=1)
 
 
+def df_from_histtab(paramert_list: list, start='01.01.1950', **kwarg):
+    """создает pandas Dataframe с данными из таблицы с историей в дизайнере модели.
+    paramert_list - параметры для выгрузки, полный список можно получить через get_production_types
+    keyword = {'wells': get_well_filter_by_name (name='14').get_wells (), требуемый список скважин
+           'mod': get_all_wells_production_tables ()[0], таблица с данными по исптории
+           'step': get_all_timesteps()}
+    """
+
+    from datetime import datetime
+
+    import pandas as pd
+    df = []
+    coll_name = ['well', 'date']+paramert_list
+    start_date = datetime.strptime(start, '%d.%m.%Y')
+    for w in kwarg['wells']:
+        print(w.name)
+        for t in kwarg['mod'].get_records(well=w):
+            if t.get_date().date() >= start_date.date():
+                row = []
+                row.append(w.name)
+                row.append(t.get_date().date())
+                row = row+[t.get_value(type=parametr)
+                           for parametr in paramert_list]
+                df.append(row)
+            else:
+                continue
+    print(coll_name)
+    result = pd.DataFrame(df, columns=coll_name)
+    result.set_index('date', inplace=True)
+    result.sort_values(by=['well', 'date'], ascending=True, inplace=True)
+    return result
+
+
 def adapt_report_frame(frame, **kwarg):
     frame.columns = ['well', 'wlpt', 'wlpth', 'wopt', 'wopth']
     well_cum = frame.loc[frame.index == frame.index.max()]
@@ -67,7 +99,7 @@ def adapt_report_frame(frame, **kwarg):
     final = {}
     final['user'] = getpass.getuser()
     final['model'] = [i.name for i in kwarg['mod']][0]
-    final['date'] = datetime.datetime.now()
+    final['date'] = datetime.now()
     final['total_wells'] = well_cum.loc[well_cum['wopth']
                                         > 0, 'well'].unique().shape[0]
     final['total_oil'] = well_cum['wopt'].sum()/well_cum['wopth'].sum()*100
@@ -91,28 +123,34 @@ def create_report_dir(path):
 
 
 def interpolate_press_by_sipy(frame, a=2, b=0.1):
-    b, a = signal.butter(a, b)
-    if frame.shape[0] > 12:
-        frame.index = frame['date']
-        frame['SBHPH'] = signal.filtfilt(
-            b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
-        frame['STHPH'] = signal.filtfilt(
-            b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill'))
-        frame.loc[frame['BHPH'].interpolate(
-            method='time').isnull(), 'SBHPH'] = np.NaN
-        frame.loc[frame['THPH'].interpolate(
-            method='time').isnull(), 'STHPH'] = np.NaN
-        frame.loc[(frame['status'] == 'not_work'), 'SBHPH'] = np.NaN
-        frame.reset_index(drop=True, inplace=True)
-    else:
-        frame['SBHPH'] = np.NaN
-        frame['STHPH'] = np.NaN
-    return frame
+    '''функция сглаживает давление по DataFrame. Коэффициенты a и b для настройки.
+      Чем выше a и ниже b тем сильнее сглаживание.
+    '''
+      b, a = signal.butter(a, b)
+       if frame.shape[0] > 12:
+            frame.index = frame['date']
+            frame['SBHPH'] = signal.filtfilt(
+                b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
+            frame['STHPH'] = signal.filtfilt(
+                b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill'))
+            frame.loc[frame['BHPH'].interpolate(
+                method='time').isnull(), 'SBHPH'] = np.NaN
+            frame.loc[frame['THPH'].interpolate(
+                method='time').isnull(), 'STHPH'] = np.NaN
+            frame.loc[(frame['status'] == 'not_work'), 'SBHPH'] = np.NaN
+            frame.reset_index(drop=True, inplace=True)
+        else:
+            frame['SBHPH'] = np.NaN
+            frame['STHPH'] = np.NaN
+        return frame
 
 
-def interpolate_prod_by_sipy(frame, a=2, b=0.2):
+def interpolate_prod_by_sipy(frame, a=2, b=0.2, gas=False):
+    '''функция сглаживает добычу по DataFrame. Коэффициенты a и b для настройки. 
+      Чем выше a и ниже b тем сильнее сглаживание.
+    '''
     b, a = signal.butter(a, b)
-    if frame.shape[0] > 12:
+    if frame.shape[0] > 12 and gas==False:
         frame.index = frame['date']
         frame['SQLIQ'] = signal.filtfilt(
             b, a, frame['QLIQ'].interpolate(method='time').fillna(method='bfill'))
@@ -125,10 +163,51 @@ def interpolate_prod_by_sipy(frame, a=2, b=0.2):
         frame.loc[(frame['status'] == 'inj'), 'SWCT'] = 0
         frame.loc[(frame['SWCT'] < 0), 'SWCT'] = 0
         frame.reset_index(drop=True, inplace=True)
+    elif frame.shape[0] > 12 and gas==True:
+        frame.index = frame['date']
+        frame['SQLIQ'] = signal.filtfilt(
+            b, a, frame['QLIQ'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[(frame['status'] == 'not_work'), 'SQLIQ'] = 0
+        frame.loc[(frame['status'] == 'inj'), 'SQLIQ'] = 0
+        frame.loc[(frame['SQLIQ'] < 0), 'SQLIQ'] = 0
+        frame['SWCT'] = signal.filtfilt(
+            b, a, frame['WCT'].interpolate(method='time').fillna(method='bfill'))
+        frame['SGOR'] = signal.filtfilt(
+            b, a, frame['GOR'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[(frame['status'] == 'not_work'), ['SWCT', 'SGOR']] = 0
+        frame.loc[(frame['status'] == 'inj'), ['SWCT', 'SGOR']] = 0
+        frame.loc[(frame['SWCT'] < 0), ['SWCT', 'SGOR']] = 0
     else:
         frame['SQLIQ'] = np.NaN
         frame['SWCT'] = np.NaN
+        frame['SGOR'] = np.NaN
     return frame
+
+
+def prod_smooth(frame, a=15, b=0.1):
+    '''функция сглаживает продуктивность по DataFrame. 
+      Чем выше a и ниже b тем сильнее сглаживание.
+    '''
+
+    b, a = signal.butter(a, b)
+    if frame.shape[0] > 12:
+        frame.index = frame['date']
+        frame.loc[(frame['SPROD'] < 0), 'SPROD'] = np.NaN
+        frame.loc[(frame['SPROD'] > frame['SPROD'].quantile(0.8)), 'SPROD'] = np.NaN
+        frame.loc[(frame['SPROD'] < frame['SPROD'].quantile(0.2)), 'SPROD'] = np.NaN
+        frame['SPROD'] = signal.filtfilt(
+            b, a, frame['SPROD'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[(frame['status'] == 'not_work'), 'SPROD'] = 0
+        frame.loc[(frame['status'] == 'inj'), 'SPROD'] = 0
+        temp= frame['SPROD'].groupby(frame.index.year).agg('median')
+        temp.name='PROD_AV'
+        frame = pd.merge(frame, temp, left_on=frame.index.year, right_on=temp.index)
+        frame.reset_index(drop=True, inplace=True)
+    else:
+        frame['SPROD'] = np.NaN
+    return frame
+
+
 
 
 def model_frame(**kwarg):

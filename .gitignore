@@ -7,3 +7,4 @@ notebooks/.ipynb_checkpoints/drilling_analitic-checkpoint.ipynb
 data/onewell.pickle
 notebooks/.ipynb_checkpoints
 __pycache__
+oilyreports.egg-info

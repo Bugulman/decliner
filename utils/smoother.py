@@ -11,7 +11,9 @@ import transliterate
 
 
 
-keyword = {'wells': get_wells_from_filter ('Фильтр по скважинам 1'), 'mod': get_all_models(), 'step': get_all_timesteps()}
+keyword = {'wells': get_wells_from_filter ('Фильтр по скважинам 1'), 
+           'mod': get_all_models(), 
+           'step': get_all_timesteps()}
 
 # создает pandas Dataframe с данными из модели. Принимает неограниченное количество параметров для
 # импорта, позволяет осуществлять импорт как по скважинам так и по группам заданием kwarg
