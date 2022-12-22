@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name="oilyreports",
-    version="1.1",
+    name="oilyreport",
+    version="1.2",
     description="tNavigator additional module",
     autor="VafinAR",
     autor_email="reg16vp@mail.ru",
