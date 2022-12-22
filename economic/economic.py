@@ -57,17 +57,17 @@ def dataframe_creater(*args, start='01.01.2000', **kwarg):
 def fond_analizator(frame, oil_dens=0.865, wat_dens=1.05):
     frame['drilled_p'] = (frame['shifted'] == 0) & (frame['lpr'] > 0)
     frame['drilled_i'] = (frame['shifted'] == 0) & (frame['wir'] > 0)
-    frame['GTM'] = (frame['opr']/frame['opr'].shift(1) > 1.3)
+    frame['GTM'] = (frame['opr']/frame['opr'].shift(1) > 1.3) # ГТМ считаем, если в смежные даты дебит изменился более чем на 30%
     frame['VNS'] = (frame['drilled_i'] == False) & (frame['wir'].shift(1) == 0) & (frame['wir'].shift(2) == 0) & (frame['wir'].shift(3) == 0)\
         & (frame['wir'].shift(4) == 0) & (frame['wir'].shift(5) == 0) & (frame['wir'].shift(6) == 0)\
         & (frame['wir'].shift(7) == 0) & (frame['wir'].shift(8) == 0) & (frame['wir'].shift(9) == 0)\
         & (frame['wir'].shift(10) == 0) & (frame['wir'].shift(11) == 0) & (frame['wir'].shift(12) == 0)\
-        & (frame['wir'] > 0)
+        & (frame['wir'] > 0) # ВВОд нагнетательной скважины , исли скважина до этого стояла год и не из бурения
     frame['VDS'] = (frame['drilled_p'] == False) & (frame['lpr'].shift(1) == 0) & (frame['lpr'].shift(2) == 0) & (frame['lpr'].shift(3) == 0)\
         & (frame['lpr'].shift(4) == 0) & (frame['lpr'].shift(5) == 0) & (frame['lpr'].shift(6) == 0)\
         & (frame['lpr'].shift(7) == 0) & (frame['lpr'].shift(8) == 0) & (frame['lpr'].shift(9) == 0)\
         & (frame['lpr'].shift(10) == 0) & (frame['lpr'].shift(11) == 0) & (frame['lpr'].shift(12) == 0)\
-        & (frame['lpr'] > 0)
+        & (frame['lpr'] > 0) # ввод добывающей - прстой год и не из бурения
     frame['prod'] = (frame['date'].dt.month == 12) & (frame['lpr'] > 0)
     frame['inj'] = (frame['date'].dt.month == 12) & (frame['wir'] > 0)
     frame['year_oil'] = (frame['date'].dt.month == 12) & (frame['wir'] > 0)
@@ -82,22 +82,22 @@ def fond_analizator(frame, oil_dens=0.865, wat_dens=1.05):
     frame['frack'] = (frame['shifted_P'] > 0) &\
         (frame['press']-frame['bhp'] > 0.1) &\
         (frame['opr']/frame['opr'].shift(1) > 1.1) &\
-        (frame['lpr'] > 0) & (frame['prodaction']/frame['shifted_P'] > 1.2)
+        (frame['lpr'] > 0) & (frame['prodaction']/frame['shifted_P'] > 1.2) # увеличение продуктивности более 20% в смежные даты, прирост 10%
     frame['MUN_VIR'] = (frame['shifted_P'] > 0) & (frame['prodaction'] > 0) & (frame['lpr'] > 0) &\
         (frame['press']-frame['bhp'] > 0.1) &\
         (frame['frack'].shift(1) != True) &\
         (frame['lpr'].shift(1) != 0) &\
         (frame['bhp'] > 0) & (
-        frame['prodaction']/frame['shifted_P'] < 0.6)
+        frame['prodaction']/frame['shifted_P'] < 0.6)  # снижение на 60% и более в смежные даты в работающей скважине
     frame['MUN_nag'] = (frame['shifted_P'] > 0) & (frame['wir'] > 0) &\
         (frame['wir'].shift(1) != 0) &\
         (frame['bhp'] > 0) & (frame['prodaction']/frame['shifted_P'] < 0.6) &\
-        (frame['prodaction']/frame['shifted_P'] > 1.2)
+        (frame['prodaction']/frame['shifted_P'] > 1.2) # увеличение продуктивности на 20% и более в смежные даты в работающей нагнетательной скважине
     frame['MUN_OTKL'] = (frame['shifted_P'] > 0) & (frame['wir'] > 0) &\
                         (frame['wir'].shift(1) != 0) &\
-                        (frame['prodaction']/frame['shifted_P'] < 0.8)
+                        (frame['prodaction']/frame['shifted_P'] < 0.8) # увеличение продуктивности на 20% и более в смежные даты в работающей нагнетательной скважине
     frame['KRS_GNO'] = (frame['shifted_P'] > 0) & (
-        frame['opr']/frame['lpr'].shift(1) > 1.2) & (frame['prodaction']/frame['shifted_P'] < 1.2)
+        frame['opr']/frame['lpr'].shift(1) > 1.2) & (frame['prodaction']/frame['shifted_P'] < 1.2)# рост добычи на 20% и с изменением продуктивности менее 20% в работающей добывающей скважине
     return frame
 
 
@@ -148,9 +148,7 @@ def economic_frame():
 
 
 def surf_frame():
-    """TODO: Docstring for surf_frame.
-    :returns: TODO
-    """
+    """Данные по уровням добыча площадых объетов и объектов сбора на основании их группировок"""
     dk_frame = dataframe_creater(
         glpt, gwpt, gopt, ggpt, gwit, start='01.01.2020', **keyword).reset_index()
     dk_frame.columns = ['date', 'group', 'lpt', 'wpt', 'opt', 'gpt', 'wit']

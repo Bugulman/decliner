@@ -8,6 +8,7 @@ import numpy as np
 # import sqlalchemy
 from scipy import signal
 
+
 def dataframe_creater(*args, start='01.01.1950', **kwarg):
     """создает pandas Dataframe с данными из модели.
          Принимает неограниченное количество параметров для
@@ -68,11 +69,11 @@ def adapt_report_frame(frame, **kwarg):
     final['model'] = [i.name for i in kwarg['mod']][0]
     final['date'] = datetime.datetime.now()
     final['total_wells'] = well_cum.loc[well_cum['wopth']
-        > 0, 'well'].unique().shape[0]
+                                        > 0, 'well'].unique().shape[0]
     final['total_oil'] = well_cum['wopt'].sum()/well_cum['wopth'].sum()*100
     final['total_liq'] = well_cum['wlpt'].sum()/well_cum['wlpth'].sum()*100
     final['oil_adapt'] = well_cum.loc[well_cum['oil'] ==
-        'good', 'wopth'].sum()/well_cum['wopth'].sum()*100
+                                      'good', 'wopth'].sum()/well_cum['wopth'].sum()*100
     final['liq_adapt'] = well_cum['lik'].value_counts(normalize=True)[1]*100
     final['wells_adapt'] = well_cum['oil'].value_counts(normalize=True)[1]*100
     return pd.DataFrame(final, index=[1])
@@ -88,21 +89,27 @@ def create_report_dir(path):
         os.mkdir('reports')
         os.chdir(path+r'\\reports')
 
+
 def interpolate_press_by_sipy(frame, a=2, b=0.1):
-	b, a = signal.butter(a,b)
-	if frame.shape[0]>12:
-		frame.index=frame['date']
-		frame['SBHPH']= signal.filtfilt(b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill')) 
-		frame['STHPH']= signal.filtfilt(b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill')) 
-		frame.loc[frame['BHPH'].interpolate(method='time').isnull(), 'SBHPH'] = np.NaN
-		frame.loc[frame['THPH'].interpolate(method='time').isnull(), 'STHPH'] = np.NaN
-		frame.loc[(frame['status']=='not_work'), 'SBHPH'] = np.NaN
-		frame.reset_index(drop=True, inplace=True)
-	else:
-		frame['SBHPH']= np.NaN 
-		frame['STHPH']= np.NaN
-	return frame
-	
+    b, a = signal.butter(a, b)
+    if frame.shape[0] > 12:
+        frame.index = frame['date']
+        frame['SBHPH'] = signal.filtfilt(
+            b, a, frame['BHPH'].interpolate(method='time').fillna(method='bfill'))
+        frame['STHPH'] = signal.filtfilt(
+            b, a, frame['THPH'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[frame['BHPH'].interpolate(
+            method='time').isnull(), 'SBHPH'] = np.NaN
+        frame.loc[frame['THPH'].interpolate(
+            method='time').isnull(), 'STHPH'] = np.NaN
+        frame.loc[(frame['status'] == 'not_work'), 'SBHPH'] = np.NaN
+        frame.reset_index(drop=True, inplace=True)
+    else:
+        frame['SBHPH'] = np.NaN
+        frame['STHPH'] = np.NaN
+    return frame
+
+
 def interpolate_prod_by_sipy(frame, a=2, b=0.2):
     b, a = signal.butter(a, b)
     if frame.shape[0] > 12:
@@ -131,4 +138,3 @@ def model_frame(**kwarg):
     df.columns = ['date', 'well', 'QOIL', 'QWAT',
                   'QWIN', 'BHPH', 'THPH', 'MQLIQ', 'MBHP', 'MPRES']
     return df
-
