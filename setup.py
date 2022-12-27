@@ -19,7 +19,7 @@ if __name__ == "__main__":
         name="oily_report",
         version=os.getenv("PACKAGE_VERSION", "1.2.1"),
         # package_dir={"": "oily_report"},
-        packages=['oily_report'],
+        packages=find_packages(),
         description="My package for production data analis"
         # install_requires=[
         # *read_pipenv_dependencies("Pipfile.lock"),
