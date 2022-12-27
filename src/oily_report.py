@@ -1,4 +1,6 @@
 import getpass
+import dca_per_well as dca
+import logging
 import os
 from datetime import datetime
 import numpy as np
@@ -268,3 +270,45 @@ def model_frame(**kwarg):
     df.columns = ['date', 'well', 'QOIL', 'QWAT',
                   'QWIN', 'BHPH', 'THPH', 'MQLIQ', 'MBHP', 'MPRES']
     return df
+
+
+# FAQ: Тут включаются функции с анализом падения добычи
+
+def declane_fit(frame, start_year:str):
+    frame = frame.loc[
+        (frame["date"] > "2010") & (frame.status == "prod"),
+        ["well", "date", "SOIL", "QOIL"],
+    ]
+    name = frame["well"].unique()
+    frame["Time"] = frame["date"] - frame["date"].min()
+    frame["Time"] = frame["Time"] / np.timedelta64(1, "D")
+    shift = frame.loc[frame["QOIL"] == frame["QOIL"].max(), "Time"]
+    shift = int(shift.head(1).values)
+    frame["Time"] = frame["Time"] - shift
+    sub = frame.copy()
+    sub = sub[sub["Time"] >= 0]
+    frame["Time"] = frame["Time"] + shift
+    last_deb = float(frame["QOIL"].tail(1))
+    try:
+        qi, di, b, RMSE = dca.arps_fit(
+            sub["Time"].values, sub["SOIL"].values, plot=False
+        )
+    except ValueError:
+        print(f"Ошибка определения темпа для скважины {name}")
+        qi, di, b, RMSE = [last_deb, 0.2, 0.2, 0.99]
+    except RuntimeError:
+        print(f"Ошибка определения темпа для скважины {name}")
+        qi, di, b, RMSE = [last_deb, 0.2, 0.2, 0.99]
+    logging.info(
+        f"Скважина {name[0]},начало прогноза-{sub.date.min()}, \
+                qi-{round(qi,2)} Di-{round(di,2)}, {b}"
+    )
+
+    pivot_info = {"well": name[0], "first_date": sub.date.min(), "qi": qi}
+    # pivot_info = {'well':name[0],'first_date':sub.date.min(),
+    # 'qi':round(qi[0],2), 'Di':round(qi[1],2), 'bi':round(qi[2],2), 'Dterm':round(qi[3], 2)}
+    pivot_info = pd.DataFrame([pivot_info])
+    return pivot_info
+
+
+

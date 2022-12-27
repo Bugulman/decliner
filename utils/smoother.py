@@ -85,7 +85,7 @@ def interpolate_press_by_sipy(frame, a=15, b=0.1):
 
 # функция сглаживает добычу по DataFrame. Коэффициенты a и b для настройки. 
 # Чем выше a и ниже b тем сильнее сглаживание.
-def prod_smooth(frame, a=15, b=0.1):
+def prod_smooth(frame, a=5, b=0.1):
     b, a = signal.butter(a, b)
     if frame.shape[0] > 12:
         frame.index = frame['date']
