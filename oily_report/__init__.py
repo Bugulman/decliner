@@ -1,7 +1,8 @@
 import getpass
-import dca_per_well as dca
+import oily_report.dca_per_well as dca
 import logging
 import os
+import calendar
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -220,10 +221,10 @@ def histor_smoothing(df, gas=False):
     df.date=pd.to_datetime(df.date)
     if gas == False:
         df.columns = ['date', 'well', 'QOIL', 'QWAT',
-                      'QWIN', 'BHPH', 'THPH']
+                      'QWIN', 'BHPH', 'THPH', 'WEFA']
     else:
         df.columns = ['date', 'well', 'QOIL', 'QWAT', 'QGAS',
-                      'QWIN', 'BHPH', 'THPH']
+                      'QWIN', 'BHPH', 'THPH', 'WEFA']
         df['GOR'] = df['QGAS']/df['QOIL']
 
     df['QLIQ'] = df['QOIL']+df['QWAT']
@@ -274,24 +275,41 @@ def model_frame(**kwarg):
 
 # FAQ: Тут включаются функции с анализом падения добычи
 
-def declane_fit(frame, start_year:str):
-    frame = frame.loc[
-        (frame["date"] > "2010") & (frame.status == "prod"),
-        ["well", "date", "SOIL", "QOIL"],
-    ]
-    name = frame["well"].unique()
+def worked_time(frame):
+    """Добавляет столбец с временем работы"""
     frame["Time"] = frame["date"] - frame["date"].min()
     frame["Time"] = frame["Time"] / np.timedelta64(1, "D")
-    shift = frame.loc[frame["QOIL"] == frame["QOIL"].max(), "Time"]
-    shift = int(shift.head(1).values)
-    frame["Time"] = frame["Time"] - shift
+    return frame
+    
+def day_in_month(i):
+      return calendar.monthrange(i.year,i.month)[1]
+
+
+def montly_dob (frame, summ_list=['QOIL', 'QWAT', 'QLIQ', 'QWIN', 'SQOIL', 'SQLIQ']):
+    """Добавляет столбецы с ежемесячной и накопленной добычей к датафрейму"""
+    for i in summ_list:
+        name='MON'+i
+        name2='SUMM'+i
+        frame[name]=frame['date'].apply(day_in_month)*frame[i]*frame['WEFA']
+        frame[name2]=frame[name].cumsum()/1000
+    return frame
+
+
+def decline_fit(frame, start_year, target_coll = 'QOIL'):
+    frame.date = pd.to_datetime(frame.date)
+    frame = frame.loc[
+        (frame["date"] > start_year) & (frame.status == "prod"),
+        ["well", "date", target_coll],
+    ]
+    name = frame["well"].unique()
+    shift = frame.loc[frame[target_coll] == frame[target_coll].max(), "date"]
+    shift = shift.iloc[0]
     sub = frame.copy()
-    sub = sub[sub["Time"] >= 0]
-    frame["Time"] = frame["Time"] + shift
-    last_deb = float(frame["QOIL"].tail(1))
+    sub = sub[sub["date"] >= shift]
+    last_deb = float(frame[target_coll].tail(1))
     try:
         qi, di, b, RMSE = dca.arps_fit(
-            sub["Time"].values, sub["SOIL"].values, plot=False
+            sub["date"], sub[target_coll], plot=False
         )
     except ValueError:
         print(f"Ошибка определения темпа для скважины {name}")
@@ -304,8 +322,8 @@ def declane_fit(frame, start_year:str):
                 qi-{round(qi,2)} Di-{round(di,2)}, {b}"
     )
 
-    pivot_info = {"well": name[0], "first_date": sub.date.min(), "qi": qi}
-    # pivot_info = {'well':name[0],'first_date':sub.date.min(),
-    # 'qi':round(qi[0],2), 'Di':round(qi[1],2), 'bi':round(qi[2],2), 'Dterm':round(qi[3], 2)}
+    # pivot_info = {"well": name[0], "first_date": sub.date.min(), "qi": qi}
+    pivot_info = {'well':name[0],'first_date':shift,
+    'qi':round(qi,2), 'Di':round(di,2), 'b':round(b,2), 'Accuracy':round(RMSE, 2)}
     pivot_info = pd.DataFrame([pivot_info])
     return pivot_info
