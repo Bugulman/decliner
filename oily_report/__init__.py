@@ -9,6 +9,8 @@ import pandas as pd
 # import sqlalchemy
 from scipy import signal
 
+logging.basicConfig()
+
 
 def dataframe_creater(*args, start='01.01.1950', **kwarg):
     """создает pandas Dataframe с данными из модели.
@@ -84,6 +86,7 @@ def df_from_histtab(paramert_list: list, start='01.01.1950', **kwarg):
     result = pd.DataFrame(df, columns=coll_name)
     result.set_index('date', inplace=True)
     result.sort_values(by=['well', 'date'], ascending=True, inplace=True)
+    result.fillna(0, inplace=True)
     return result
 
 
@@ -218,7 +221,8 @@ def histor_smoothing(df, gas=False):
     gas_rate(optional)|water_injection|bottemhole_pressure|pres_meash
     :returns: pandas DataFrame with smoothing press
     """
-    df.date=pd.to_datetime(df.date)
+    df.date = pd.to_datetime(df.date)
+    # logging.info(f'GAS in {gas} cols {df.columns}, table_info {df.info()}')
     if gas == False:
         df.columns = ['date', 'well', 'QOIL', 'QWAT',
                       'QWIN', 'BHPH', 'THPH', 'WEFA']
@@ -280,50 +284,64 @@ def worked_time(frame):
     frame["Time"] = frame["date"] - frame["date"].min()
     frame["Time"] = frame["Time"] / np.timedelta64(1, "D")
     return frame
-    
+
+
 def day_in_month(i):
-      return calendar.monthrange(i.year,i.month)[1]
+    """Количество дней в дате i - дата"""
+    return calendar.monthrange(i.year, i.month)[1]
 
 
-def montly_dob (frame, summ_list=['QOIL', 'QWAT', 'QLIQ', 'QWIN', 'SQOIL', 'SQLIQ']):
+def montly_dob(frame, summ_list=['QOIL', 'QWAT', 'QLIQ', 'QWIN', 'SQOIL', 'SQLIQ']):
     """Добавляет столбецы с ежемесячной и накопленной добычей к датафрейму"""
     for i in summ_list:
-        name='MON'+i
-        name2='SUMM'+i
-        frame[name]=frame['date'].apply(day_in_month)*frame[i]*frame['WEFA']
-        frame[name2]=frame[name].cumsum()/1000
+        name = 'MON'+i
+        name2 = 'SUMM'+i
+        frame[name] = frame['date'].apply(day_in_month)*frame[i]*frame['WEFA']
+        frame[name2] = frame[name].cumsum()/1000
     return frame
 
 
-def decline_fit(frame, start_year, target_coll = 'QOIL'):
+def prod_check(func):
+    """Декаратор для проверки датафреймов на наличие добычи"""
+    def _prod_check(frame, *arg, **kwarg):
+        if frame.QOIL.max()+frame.QWAT.max()+frame.QGAS.max() > 0:
+            res = func(frame, *arg, **kwarg)
+            return res
+        else:
+            print(f'Скважина {frame.well.unique()} без добычи')
+            pass
+    return _prod_check
+
+
+@prod_check
+def decline_fit(frame, start_year, target_coll='QOIL'):
+    """Находит максимум добычи на временном интервале и от него считает коэффициенты для кривой падения добычи"""
     frame.date = pd.to_datetime(frame.date)
     frame = frame.loc[
         (frame["date"] > start_year) & (frame.status == "prod"),
         ["well", "date", target_coll],
     ]
     name = frame["well"].unique()
-    shift = frame.loc[frame[target_coll] == frame[target_coll].max(), "date"]
-    shift = shift.iloc[0]
+    logging.info(f'DCA for well {name}')
+    frame = worked_time(frame)
+    max_prod = frame.loc[frame[target_coll] == frame[target_coll].max(),
+                         ["date", "Time"]]
+    max_prod_date, max_prod_Time = max_prod.values[0]
     sub = frame.copy()
-    sub = sub[sub["date"] >= shift]
+    sub = sub[sub["date"] >= max_prod_date]
     last_deb = float(frame[target_coll].tail(1))
     try:
         qi, di, b, RMSE = dca.arps_fit(
             sub["date"], sub[target_coll], plot=False
         )
-    except ValueError:
-        print(f"Ошибка определения темпа для скважины {name}")
-        qi, di, b, RMSE = [last_deb, 0.2, 0.2, 0.99]
-    except RuntimeError:
+    except:
         print(f"Ошибка определения темпа для скважины {name}")
         qi, di, b, RMSE = [last_deb, 0.2, 0.2, 0.99]
     logging.info(
         f"Скважина {name[0]},начало прогноза-{sub.date.min()}, \
                 qi-{round(qi,2)} Di-{round(di,2)}, {b}"
     )
-
-    # pivot_info = {"well": name[0], "first_date": sub.date.min(), "qi": qi}
-    pivot_info = {'well':name[0],'first_date':shift,
-    'qi':round(qi,2), 'Di':round(di,2), 'b':round(b,2), 'Accuracy':round(RMSE, 2)}
+    pivot_info = {'well': name[0], 'parametr': target_coll, 'start_match_data': max_prod_date, 'start_match_time': max_prod_Time,
+                  'current_time': frame['Time'].max(), 'qi': round(qi, 2), 'Di': round(di, 2), 'b': round(b, 2), 'Accuracy': round(RMSE, 2)}
     pivot_info = pd.DataFrame([pivot_info])
     return pivot_info

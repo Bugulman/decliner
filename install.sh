@@ -1,3 +1,10 @@
+#!/bin/sh
+$PAN = pwd
+echo $PAN
 python -m setup sdist
+echo '------PACKAGE COMPILED-------'
 cd dist
-pip3.6 install oily_repotr-1.2.1.tar.gz
+echo '-------DIR CHANGED----------'
+pip install oily_report-1.2.1.tar.gz
+pip3.6 install oily_report-1.2.1.tar.gz
+sleep 3
