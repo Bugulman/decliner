@@ -172,15 +172,18 @@ def interpolate_prod_by_sipy(frame, a=2, b=0.2, gas=False):
         frame.index = frame['date']
         frame['SQLIQ'] = signal.filtfilt(
             b, a, frame['QLIQ'].interpolate(method='time').fillna(method='bfill'))
-        frame.loc[(frame['status'] == 'not_work'), 'SQLIQ'] = 0
-        frame.loc[(frame['status'] == 'inj'), 'SQLIQ'] = 0
+        frame['SGAS'] = signal.filtfilt(
+            b, a, frame['QGAS'].interpolate(method='time').fillna(method='bfill'))
+        frame.loc[(frame['status'] == 'not_work'), ['SGAS', 'SQLIQ']] = 0
+        frame.loc[(frame['status'] == 'inj'), ['SGAS', 'SQLIQ']] = 0
         frame.loc[(frame['SQLIQ'] < 0), 'SQLIQ'] = 0
         frame['SWCT'] = signal.filtfilt(
             b, a, frame['WCT'].interpolate(method='time').fillna(method='bfill'))
-        frame['SGOR'] = signal.filtfilt(
-            b, a, frame['GOR'].interpolate(method='time').fillna(method='bfill'))
-        frame.loc[(frame['status'] == 'not_work'), ['SWCT', 'SGOR']] = 0
-        frame.loc[(frame['status'] == 'inj'), ['SWCT', 'SGOR']] = 0
+        # frame['SGOR'] = signal.filtfilt(
+            # b, a, frame['GOR'].interpolate(method='time').fillna(method='bfill'))
+        # TODO: сглаживание газового фактора тут убрал пока что 
+        frame.loc[(frame['status'] == 'not_work'), ['SWCT']] = 0
+        frame.loc[(frame['status'] == 'inj'), ['SWCT']] = 0
         frame.loc[(frame['SWCT'] < 0), 'SWCT'] = 0
     else:
         frame['SQLIQ'] = np.NaN
@@ -279,10 +282,11 @@ def model_frame(**kwarg):
 
 # FAQ: Тут включаются функции с анализом падения добычи
 
-def worked_time(frame):
+def worked_time(frame, delta = 0):
     """Добавляет столбец с временем работы"""
     frame["Time"] = frame["date"] - frame["date"].min()
     frame["Time"] = frame["Time"] / np.timedelta64(1, "D")
+    frame["Time"] = frame["Time"] + delta
     return frame
 
 
@@ -314,13 +318,13 @@ def prod_check(func):
 
 
 @prod_check
-def decline_fit(frame, start_year, target_coll='QOIL'):
-    """Находит максимум добычи на временном интервале и от него считает коэффициенты для кривой падения добычи"""
+def decline_fit(frame, start_year, target_coll='QOIL', to_df = False):
+    """Находит максимум добычи на временном интервале и от 
+    него считает коэффициенты для кривой падения добычи"""
     frame.date = pd.to_datetime(frame.date)
     frame = frame.loc[
         (frame["date"] > start_year) & (frame.status == "prod"),
-        ["well", "date", target_coll],
-    ]
+        ["well", "date", target_coll]]
     name = frame["well"].unique()
     logging.info(f'DCA for well {name}')
     frame = worked_time(frame)
@@ -341,7 +345,30 @@ def decline_fit(frame, start_year, target_coll='QOIL'):
         f"Скважина {name[0]},начало прогноза-{sub.date.min()}, \
                 qi-{round(qi,2)} Di-{round(di,2)}, {b}"
     )
-    pivot_info = {'well': name[0], 'parametr': target_coll, 'start_match_data': max_prod_date, 'start_match_time': max_prod_Time,
-                  'current_time': frame['Time'].max(), 'qi': round(qi, 2), 'Di': round(di, 2), 'b': round(b, 2), 'Accuracy': round(RMSE, 2)}
-    pivot_info = pd.DataFrame([pivot_info])
-    return pivot_info
+    dca_info = {'well': name[0], 'parametr': target_coll, 
+                'start_match_data': max_prod_date, 'start_match_time': max_prod_Time,
+                'current_data': frame['date'].max(), 'current_time': frame['Time'].max(), 
+                'qi': qi, 'Di': di, 'b': b, 'Accuracy': RMSE}
+    return pd.DataFrame([dca_info]) if to_df==True else dca_info
+
+
+def prod_predict(long=120, **kwarg):
+    '''Прогноз добычи по параметрам функции decline_fit'''
+    delta = kwarg['current_data'].to_period('M') -  \
+         kwarg['start_match_data'].to_period('M')
+    long = delta.n+long
+    prog = pd.DataFrame(pd.date_range(kwarg['start_match_data'], 
+                                      periods=long, freq='MS'))
+    prog.columns = ['date']
+    worked_time(prog)
+    prog[kwarg['parametr']] = dca.hyperbolic(prog.Time, 
+                                             kwarg['qi'], kwarg['Di'], kwarg['b'])
+    prog['well'] = kwarg['well']
+    return prog
+#     prog['rate'] = mh.rate(prog.Time)
+#     prog['month_prod'] = mh.monthly_vol(prog.Time)
+#     # frame=pd.merge(frame, prog, left_on='date', right_on ='date', how='outer')
+#     # frame['well'].fillna(method='ffill', inplace=True)
+#     return prog['rate']
+#
+
