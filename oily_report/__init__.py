@@ -9,7 +9,8 @@ import pandas as pd
 # import sqlalchemy
 from scipy import signal
 
-logging.basicConfig()
+logging.basicConfig(level=logging.INFO, filename=r"d:\work\python\decliner\py_log.log", filemode="w",
+                    format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def dataframe_creater(*args, start='01.01.1950', **kwarg):
@@ -82,7 +83,6 @@ def df_from_histtab(paramert_list: list, start='01.01.1950', **kwarg):
                 df.append(row)
             else:
                 continue
-    print(coll_name)
     result = pd.DataFrame(df, columns=coll_name)
     result.set_index('date', inplace=True)
     result.sort_values(by=['well', 'date'], ascending=True, inplace=True)
@@ -180,8 +180,8 @@ def interpolate_prod_by_sipy(frame, a=2, b=0.2, gas=False):
         frame['SWCT'] = signal.filtfilt(
             b, a, frame['WCT'].interpolate(method='time').fillna(method='bfill'))
         # frame['SGOR'] = signal.filtfilt(
-            # b, a, frame['GOR'].interpolate(method='time').fillna(method='bfill'))
-        # TODO: сглаживание газового фактора тут убрал пока что 
+        # b, a, frame['GOR'].interpolate(method='time').fillna(method='bfill'))
+        # TODO: сглаживание газового фактора тут убрал пока что
         frame.loc[(frame['status'] == 'not_work'), ['SWCT']] = 0
         frame.loc[(frame['status'] == 'inj'), ['SWCT']] = 0
         frame.loc[(frame['SWCT'] < 0), 'SWCT'] = 0
@@ -282,7 +282,7 @@ def model_frame(**kwarg):
 
 # FAQ: Тут включаются функции с анализом падения добычи
 
-def worked_time(frame, delta = 0):
+def worked_time(frame, delta=0):
     """Добавляет столбец с временем работы"""
     frame["Time"] = frame["date"] - frame["date"].min()
     frame["Time"] = frame["Time"] / np.timedelta64(1, "D")
@@ -307,9 +307,11 @@ def montly_dob(frame, summ_list=['QOIL', 'QWAT', 'QLIQ', 'QWIN', 'SQOIL', 'SQLIQ
 
 def prod_check(func):
     """Декаратор для проверки датафреймов на наличие добычи"""
-    def _prod_check(frame, *arg, **kwarg):
-        if frame.QOIL.max()+frame.QWAT.max()+frame.QGAS.max() > 0:
-            res = func(frame, *arg, **kwarg)
+    def _prod_check(frame, start_year, *arg, **kwarg):
+        filtred_frame = frame.loc[
+            (frame["date"] > start_year) & (frame.status == "prod")]
+        if filtred_frame.QOIL.max()+filtred_frame.QWAT.max()+filtred_frame.QGAS.max() > 0:
+            res = func(frame, start_year, *arg, **kwarg)
             return res
         else:
             print(f'Скважина {frame.well.unique()} без добычи')
@@ -318,7 +320,7 @@ def prod_check(func):
 
 
 @prod_check
-def decline_fit(frame, start_year, target_coll='QOIL', to_df = False):
+def decline_fit(frame, start_year, target_coll='QOIL', to_df=False):
     """Находит максимум добычи на временном интервале и от 
     него считает коэффициенты для кривой падения добычи"""
     frame.date = pd.to_datetime(frame.date)
@@ -342,26 +344,25 @@ def decline_fit(frame, start_year, target_coll='QOIL', to_df = False):
         print(f"Ошибка определения темпа для скважины {name}")
         qi, di, b, RMSE = [last_deb, 0.2, 0.2, 0.99]
     logging.info(
-        f"Скважина {name[0]},начало прогноза-{sub.date.min()}, \
-                qi-{round(qi,2)} Di-{round(di,2)}, {b}"
+        f"Скважина {name[0]}, начало прогноза-{sub.date.min()}, qi-{qi}, Di-{di}, {b}"
     )
-    dca_info = {'well': name[0], 'parametr': target_coll, 
+    dca_info = {'well': name[0], 'parametr': target_coll,
                 'start_match_data': max_prod_date, 'start_match_time': max_prod_Time,
-                'current_data': frame['date'].max(), 'current_time': frame['Time'].max(), 
+                'current_data': frame['date'].max(), 'current_time': frame['Time'].max(),
                 'qi': qi, 'Di': di, 'b': b, 'Accuracy': RMSE}
-    return pd.DataFrame([dca_info]) if to_df==True else dca_info
+    return pd.DataFrame([dca_info]) if to_df == True else dca_info
 
 
 def prod_predict(long=120, **kwarg):
     '''Прогноз добычи по параметрам функции decline_fit'''
     delta = kwarg['current_data'].to_period('M') -  \
-         kwarg['start_match_data'].to_period('M')
+        kwarg['start_match_data'].to_period('M')
     long = delta.n+long
-    prog = pd.DataFrame(pd.date_range(kwarg['start_match_data'], 
+    prog = pd.DataFrame(pd.date_range(kwarg['start_match_data'],
                                       periods=long, freq='MS'))
     prog.columns = ['date']
     worked_time(prog)
-    prog[kwarg['parametr']] = dca.hyperbolic(prog.Time, 
+    prog[kwarg['parametr']] = dca.hyperbolic(prog.Time,
                                              kwarg['qi'], kwarg['Di'], kwarg['b'])
     prog['well'] = kwarg['well']
     return prog
@@ -371,4 +372,3 @@ def prod_predict(long=120, **kwarg):
 #     # frame['well'].fillna(method='ffill', inplace=True)
 #     return prog['rate']
 #
-
