@@ -10,150 +10,82 @@ import numpy as np
 import easyocr
 import fitz
 import pprint
+import sqlite3
 
 p = Path.cwd()
 p = p.joinpath('for_test')
+con = sqlite3.connect(p.joinpath('pasport.db'))
 
-print(p.parts)
-
+# con.close()
 # %%
-p = Path(r'K:\2023\UNGKM\Data Achimgas\Данные ГИС и дела скважин')
-print(p)
 
-# %%
+# NOTE:подключение к базе Postgresql
 engine = create_engine(
     'postgresql://test:test@localhost:5434/ungkm')
 # %%
 
+# NOTE: подключение к базе sqllite
+engine = create_engine('sqlite:///pasport.db')
 
 # %%
+
 # Перечень файлов паспортов скважин
+# WARN: запускается единожды!
+p = Path(r'K:\2023\UNGKM\Data Achimgas\Данные ГИС и дела скважин')
+print(p)
+
 with open('pasports.txt', 'w+') as var:
     for file in p.glob('**/*.pdf*'):
         if 'Паспорт' in str(file) and '~' not in str(file):
             var.write(str(file))
             print(file)
 # %%
-# Распознование текста с картинки
 def text_recognition(path):
+    '''Распознование текста с картинки'''
     read = easyocr.Reader(['en',
                            'ru'], gpu=True)
-    return read.readtext(path, detail=0, paragraph=True, text_threshold=0.9)
-
-text = text_recognition(str(p.joinpath('page-1.png')))
-text = ' '.join(text)
-text = text+' 01.01.2033'
-
-print(text) 
-# text = '31.01.2022 силы тьмы захватили мир 01.02.2022 силы света победили 01.02.2022 '
-# %%
-
-finder = re.compile('(С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})(.*?)(?=С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})')
-pprint.pprint(finder.findall(text))
-
-# %%
-
-def read_pdf(path):
-    with fitz.open(path) as file:
-        file.
-        
-print(p.joinpath('111.png'))
+    text = read.readtext(path, detail=0, paragraph=True, text_threshold=0.9)
+    return ' '.join(text)
 
 # %%
 # вытаскиваем изображения из PDF
 zoom_x = 4.0  # horizontal zoom
 zoom_y = 4.0  # vertical zoom
 mat = fitz.Matrix(zoom_x, zoom_y)  # zoom factor 2 in each dimension
-pix = page.get_pixmap(matrix=mat)
+# pix = page.get_pixmap(matrix=mat)
 # file_path = p.glob('*.pdf')
 # pdf_file = fitz.open(list(file_path)[0])
 
 def get_pic_from_pdf(path, tar_location):
     '''Функция вытаскивает изображения из файла PDF'''
+    pics=[]
     pdf = Path(path)
-    to_dir=Parh(tar_location)
+    to_dir = Path(tar_location)
     pdf_file = fitz.open(pdf)
     pix = pdf_file[1].get_pixmap(matrix=mat) # render page to an image
     for page in pdf_file:  # iterate through the pages
         pix = page.get_pixmap(matrix=mat) # render page to an image
         pic_name = to_dir.joinpath(f"page-{page.number}.png") 
         pix.save(pic_name)  # store image as a PNG
+        pics.append(pic_name)
+    return pics
     
 
-
 # %%
 
-# обрабатвает файлы для получения списка экселей с названием листов
-files = []
-sheets = []
-prod_files = {}
-for file in p.glob('**/*.xls*'):
-    if 'рапорт' in str(file) and '~' not in str(file):
-        try:
-            book = openpyxl.load_workbook(file)
-            sheet = book.sheetnames
-            files.append(str(file))
-            sheets.append(sheet)
-        except:
-            book = xlrd.open_workbook(file)
-            sheet = book.sheet_names()
-            files.append(str(file))
-            sheets.append(sheet)
-prod_files['files'] = files
-prod_files['sheets'] = sheets
-print(prod_files)
+text = text_recognition(str(p.joinpath('page-6.png')))
+text = text+' 01.01.2033'
 
+print(text)
+# text = '31.01.2022 силы тьмы захватили мир 01.02.2022 силы света победили 01.02.2022 '
 # %%
 
-well_list = ['действующий фонд',
-             'бездействующий фонд', 'ликвидированный фонд']
+finder = re.compile('(С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})(.*?)(?=С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})')
+pprint.pprint(finder.findall(text))
+pd.DataFrame(finder.findall(text))
+
 
 # %%
-
-
-def find_excel_row(sheet, to_find, column):
-    """TODO: Docstring for find_excel_row.
-    :returns: TODO
-    """
-    try:
-        start_cell = sheet[column].value.index(float(to_find))
-        start_cell += 1
-        table = sheet.range((start_cell, 1), (start_cell, 36))
-    except Exception as e:
-        regex_str = re.compile(to_find)
-        column_value = [x for x in sheet['A:A'].value if x != None]
-        column_value = list(map(str, column_value))
-        temp = [regex_str.findall(x)
-                for x in column_value if regex_str.search(x) != None]
-        print(temp)
-        start_cell = sheet[column].value.index(temp[0][0])
-        start_cell += 1
-        table = sheet.range((start_cell, 1), (start_cell, 36))
-    return table
-
-
-def parse_excel_table(file, reg_ex, column):
-   # print(file)
-    with xw.App(visible=False) as app:
-        # app = xw.App()
-        book = xw.Book(file)
-        name = book.sheet_names[0]
-        sheet = book.sheets[name]
-        try:
-            table = find_excel_row(sheet, reg_ex, column)
-            df = table.options(pd.DataFrame, expand='down').value
-            df.replace(to_replace='-', value=np.nan, inplace=True)
-            df.replace(to_replace=' -', value=np.nan, inplace=True)
-            df.columns = range(0, df.shape[1])
-            # book.save(file)
-            book.close()
-            # book.app.kill()
-            return df[df[2].notnull()]
-        except Exception as e:
-            print(
-                f'Ошибка поиска значения {reg_ex} в файле {file}')
-            return None
-
 
 def add_metadata(df, extra_data):
     for k, v in extra_data.items():
@@ -161,9 +93,44 @@ def add_metadata(df, extra_data):
 
 # %%
 
+files = pd.read_excel(r'I:\Achimgas\mer_files.xlsx',
+                      sheet_name='pasports')
 
-files = pd.read_excel(p.parent.joinpath('mer_files.xlsx'),
-                      sheet_name='Sheet1')
+file = files.iloc[0]
+content = file['Path']
+well = file['well']
+kust = file['kust']
+pages = get_pic_from_pdf(content, r'D:\work\python\decliner\for_test')
+
+# %%
+
+for page in pages:
+    text = text_recognition(str(page))
+    text = text+' 01.01.2033'
+    finder = re.compile('(С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})(.*?)(?=С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})')
+    parsed_text = finder.findall(text)
+    if len(parsed_text)>0:
+        df = pd.DataFrame(parsed_text, columns=['date', 'event'])
+        df['well'] = well
+        df['kust'] = kust
+        df['page'] = page.parts[-1]
+        df.to_sql('pasports', con=engine, if_exists='append')
+    else:
+        df = pd.DataFrame([['no_date', text]], columns=['date', 'event'])
+        df['well'] = well
+        df['kust'] = kust
+        df['page'] = page.parts[-1]
+        df.to_sql('pasports', con=engine, if_exists='append')
+
+# %%
+
+
+for file in tqdm(files.iterrows()):
+    content = file[1]['Path']
+    well = file[1]['well']
+    kust = file[1]['kust']
+    print(well, kust)
+    time.sleep(0.1)
 
 files = files[files['to_take'] > 0]
 files.drop('to_take', axis=1, inplace=True)
