@@ -14,7 +14,7 @@ import sqlite3
 
 p = Path.cwd()
 p = p.joinpath('for_test')
-con = sqlite3.connect(p.joinpath('pasport.db'))
+# con = sqlite3.connect(p.joinpath('pasport.db'))
 
 # con.close()
 # %%
@@ -40,12 +40,15 @@ with open('pasports.txt', 'w+') as var:
             var.write(str(file))
             print(file)
 # %%
+
+
 def text_recognition(path):
     '''Распознование текста с картинки'''
     read = easyocr.Reader(['en',
                            'ru'], gpu=True)
     text = read.readtext(path, detail=0, paragraph=True, text_threshold=0.9)
     return ' '.join(text)
+
 
 # %%
 # вытаскиваем изображения из PDF
@@ -56,32 +59,40 @@ mat = fitz.Matrix(zoom_x, zoom_y)  # zoom factor 2 in each dimension
 # file_path = p.glob('*.pdf')
 # pdf_file = fitz.open(list(file_path)[0])
 
+
 def get_pic_from_pdf(path, tar_location):
     '''Функция вытаскивает изображения из файла PDF'''
-    pics=[]
+    pics = []
     pdf = Path(path)
     to_dir = Path(tar_location)
     pdf_file = fitz.open(pdf)
-    pix = pdf_file[1].get_pixmap(matrix=mat) # render page to an image
+    pix = pdf_file[1].get_pixmap(matrix=mat)  # render page to an image
     for page in pdf_file:  # iterate through the pages
-        pix = page.get_pixmap(matrix=mat) # render page to an image
-        pic_name = to_dir.joinpath(f"page-{page.number}.png") 
+        pix = page.get_pixmap(matrix=mat)  # render page to an image
+        pic_name = to_dir.joinpath(f"page-{page.number}.png")
         pix.save(pic_name)  # store image as a PNG
         pics.append(pic_name)
     return pics
-    
+
 
 # %%
 
-text = text_recognition(str(p.joinpath('page-6.png')))
+text = text_recognition(str(p.joinpath('page-2.png')))
 text = text+' 01.01.2033'
 
-print(text)
+pprint.pprint(text)
+
 # text = '31.01.2022 силы тьмы захватили мир 01.02.2022 силы света победили 01.02.2022 '
+text = 'c 31.01.2022г. по 01.02.2022г. силы тьмы захватили мир 01.02.2022г силы света победили 01.02.2022 '
 # %%
 
-finder = re.compile('(С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})(.*?)(?=С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})')
+finder = re.compile(
+    '([Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)(.*?)(?=[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)')
+# finder = re.compile('[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.')
 pprint.pprint(finder.findall(text))
+
+text
+
 pd.DataFrame(finder.findall(text))
 
 
@@ -92,6 +103,7 @@ def add_metadata(df, extra_data):
         df[k] = v
 
 # %%
+
 
 files = pd.read_excel(r'I:\Achimgas\mer_files.xlsx',
                       sheet_name='pasports')
@@ -106,10 +118,11 @@ pages = get_pic_from_pdf(content, r'D:\work\python\decliner\for_test')
 
 for page in pages:
     text = text_recognition(str(page))
-    text = text+' 01.01.2033'
-    finder = re.compile('(С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})(.*?)(?=С?\d{1,2}\.\d{1,2}\.?\s*-\s*\d{1,2}\.\d{1,2}\.\d{2,4}|\s*\d{1,2}\.\d{1,2}\.\d{2,4})')
+    text = text+' 01.01.2033 '
+    finder = re.compile(
+        '([Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)(.*?)(?=[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)')
     parsed_text = finder.findall(text)
-    if len(parsed_text)>0:
+    if len(parsed_text) > 0:
         df = pd.DataFrame(parsed_text, columns=['date', 'event'])
         df['well'] = well
         df['kust'] = kust
@@ -123,17 +136,36 @@ for page in pages:
         df.to_sql('pasports', con=engine, if_exists='append')
 
 # %%
-
+files
 
 for file in tqdm(files.iterrows()):
     content = file[1]['Path']
     well = file[1]['well']
     kust = file[1]['kust']
-    print(well, kust)
-    time.sleep(0.1)
+    pages = get_pic_from_pdf(content, r'D:\work\python\decliner\for_test')
+    for page in pages:
+        text = text_recognition(str(page))
+        text = text+' 01.01.2033 '
+        finder = re.compile('([Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)(.*?)(?=[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)')
+        parsed_text = finder.findall(text)
+        if len(parsed_text) > 0:
+            df = pd.DataFrame(parsed_text, columns=['date', 'event'])
+            df['well'] = well
+            df['kust'] = kust
+            df['page'] = page.parts[-1]
+            df.to_sql('pasports', con=engine, if_exists='append')
+        else:
+            df = pd.DataFrame([['no_date', text]],
+                              columns=['date', 'event'])
+            df['well'] = well
+            df['kust'] = kust
+            df['page'] = page.parts[-1]
+            df.to_sql('pasports', con=engine, if_exists='append')
 
-files = files[files['to_take'] > 0]
-files.drop('to_take', axis=1, inplace=True)
+
+# files = files[files['to_take'] > 0]
+# files.drop('to_take', axis=1, inplace=True)
+
 # %%
 
 for k, v in files.iloc[0].items():
