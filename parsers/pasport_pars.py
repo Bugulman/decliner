@@ -31,14 +31,18 @@ engine = create_engine('sqlite:///pasport.db')
 
 # Перечень файлов паспортов скважин
 # WARN: запускается единожды!
-p = Path(r'K:\2023\UNGKM\Data Achimgas\Данные ГИС и дела скважин')
+p = Path(r'K:\2023\UNGKM\Data Achim Development\Дела скважин')
 print(p)
 
 with open('pasports.txt', 'w+') as var:
     for file in p.glob('**/*.pdf*'):
-        if 'Паспорт' in str(file) and '~' not in str(file):
-            var.write(str(file))
-            print(file)
+        finder = re.compile('[Пп]аспорт\s?[Сс]кважины.*')
+        if finder.search(str(file)) != None:
+            try:
+                var.write(str(file)+'/n')
+                print(file)
+            except:
+                continue
 # %%
 
 
@@ -84,10 +88,15 @@ pprint.pprint(text)
 
 # text = '31.01.2022 силы тьмы захватили мир 01.02.2022 силы света победили 01.02.2022 '
 text = 'c 31.01.2022г. по 01.02.2022г. силы тьмы захватили мир 01.02.2022г силы света победили 01.02.2022 '
+
+text = r'K:\2023\UNGKM\Data Achim Development\Дела скважин\4A062\4А062_ДЕЛО_СКВАЖИНЫ\!Дело скв.№4А062 куст №4А06 (по освоению )\Приложение 1. Паспорт скважины №4А062 куста газоконденсатных скважин №4А06.pdf'
+
+text = r'K:\2023\UNGKM\Data Achim Development\Дела скважин\4A061\ЗАКАНЧИВАНИЕ\КПО\Паспорта\smg, coupling, pup joint\Pup joint  0.91-64.pdf'
 # %%
 
-finder = re.compile(
-    '([Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)(.*?)(?=[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)')
+finder = re.compile('[Пп]аспорт\s?[Сс]кважины.*')
+type(finder.search(text))
+
 # finder = re.compile('[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.')
 pprint.pprint(finder.findall(text))
 
@@ -107,14 +116,15 @@ def add_metadata(df, extra_data):
 
 files = pd.read_excel(r'I:\Achimgas\mer_files.xlsx',
                       sheet_name='pasports')
+# %%
+
+# BUG: для тестировния
 
 file = files.iloc[0]
 content = file['Path']
 well = file['well']
 kust = file['kust']
 pages = get_pic_from_pdf(content, r'D:\work\python\decliner\for_test')
-
-# %%
 
 for page in pages:
     text = text_recognition(str(page))
@@ -137,7 +147,11 @@ for page in pages:
 
 # %%
 files
+files = files[files['to_take'] > 0]
+files.drop('to_take', axis=1, inplace=True)
 
+
+# %%
 for file in tqdm(files.iterrows()):
     content = file[1]['Path']
     well = file[1]['well']
@@ -146,7 +160,8 @@ for file in tqdm(files.iterrows()):
     for page in pages:
         text = text_recognition(str(page))
         text = text+' 01.01.2033 '
-        finder = re.compile('([Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)(.*?)(?=[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)')
+        finder = re.compile(
+            '([Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)(.*?)(?=[Сc]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}.{1,10}?\d{1,2}\.\d{1,2}\.\d{2,4}г?.|\s*\d{1,2}\.\d{1,2}\.\d{2,4}г?.)')
         parsed_text = finder.findall(text)
         if len(parsed_text) > 0:
             df = pd.DataFrame(parsed_text, columns=['date', 'event'])
@@ -162,9 +177,6 @@ for file in tqdm(files.iterrows()):
             df['page'] = page.parts[-1]
             df.to_sql('pasports', con=engine, if_exists='append')
 
-
-# files = files[files['to_take'] > 0]
-# files.drop('to_take', axis=1, inplace=True)
 
 # %%
 
