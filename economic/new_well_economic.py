@@ -1,18 +1,11 @@
-# Automaticaly recalculate=true
-# Single model=false
-# пишите здесь ваш код
-# пишите здесь ваш кодdate="01.07.2019"
-##################################################
-################ Script Section ##################
-##################################################
 
+#пишите здесь ваш код
 import datetime
 import oily_report as olr
 import pandas as pd
 import pickle
-
 olr.create_report_dir(path=get_project_folder())
-
+import math
 
 # исходные данные для проведения экономического расчета
 depreciation_year = 8  # year
@@ -22,13 +15,14 @@ oil_price = 17259  # rub/t.tonn
 opex_oil = 29.29  # rub/tonn
 opex_liq = 73.25  # rub/tonn
 ndpi = 9980
-capex = 31637  # t.rub
+capex = 20637  # t.rub
 k_disk = 10  # t.rub
-m = get_model_by_name('SARAI_FORECAST1')
-prefix = 'G'
+m = get_current_model ( )
 
+
+prefix = 'P'
 project_wells = [w for w in get_all_wells() if w.name.startswith(prefix)]
-
+print(m.name)
 
 # показатели для расчета
 oil_prod_gr = graph(type='well', default_value=0)
@@ -48,9 +42,8 @@ npv_gr = graph(type='well', default_value=0)
 iddz_gr = graph(type='well', default_value=0)
 temp = graph(type='well', default_value=0)
 
-
 start = 2021  # дата начала прогноза
-end = 2037  # дата окончания прогноза
+end = 2024  # дата окончания прогноза
 den = 1
 
 olr.create_report_dir(path=get_project_folder())
@@ -60,18 +53,21 @@ colls = [(x.to_datetime().year-start) for x in get_all_timesteps()]
 colls = max(colls)
 print(colls)
 
-depreciation = [0]*colls
-for i in range(depreciation_year):
-    depreciation[i] = capex/depreciation_year
 
-for i in range(depreciation_year):
-    depreciation[i] = capex/depreciation_year
+# Блок рассчета амортизации
+depreciation = [0]*colls
+if colls>=depreciation_year:
+    for i in range(depreciation_year):
+        #print(i, depreciation)
+        depreciation[i] = capex/depreciation_year
+else:
+    depreciation = [capex/depreciation_year]*colls
 
 
 steps = []
 for t in get_all_timesteps():
     if t.to_datetime().day == 1 and t.to_datetime().month == 1\
-            and t.to_datetime().year >= start:
+            and t.to_datetime().year >= start and t.to_datetime().year <= end:
         steps.append(t)
 
 
@@ -153,5 +149,23 @@ export(iddz_gr, name='ИДДЗ', units='diametr')
 
 df = pd.DataFrame(
     df, columns=['скважина', 'Дата_бурения', 'Накопленная добыча', 'ЧДД', 'ИДДЗ'])
-with open('wells_economic.pickle', 'wb') as file:
-    pickle.dump(df, file)
+    
+# Блок для расчета целевой функции
+succ_wells = graph(type='field', default_value=math.nan)
+succ_ratio = graph(type='field', default_value=math.nan)
+
+df['Success']=df['ИДДЗ']>0.9
+
+prefix = 'I'
+new_inj = len([w.name for w in get_all_wells() if w.name.startswith(prefix)])
+
+tot_well, success_pers = df['Success'].agg(['count', 'mean'])
+
+succ_wells[get_all_timesteps()[0]]= 0
+succ_ratio[get_all_timesteps()[0]]= 0
+succ_wells[get_all_timesteps()[-1]]= round((tot_well+new_inj)*success_pers,5)
+succ_ratio[get_all_timesteps()[-1]]= round(success_pers*100,5)
+
+export(succ_wells, name='Количество эффективных скважин')
+export(succ_ratio, name='Процент успешности')
+
