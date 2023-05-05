@@ -104,11 +104,12 @@ def add_metadata(df, extra_data):
     for k, v in extra_data.items():
         df[k] = v
 
+
 # %%
+p = Path('G:/Achimgas')
 
-
-files = pd.read_excel(p.parent.joinpath('mer_files.xlsx'),
-                      sheet_name='Sheet1')
+files = pd.read_excel(p.joinpath('mer_files.xlsx'),
+                      sheet_name='Prod_files')
 
 files = files[files['to_take'] > 0]
 files.drop('to_take', axis=1, inplace=True)
@@ -140,7 +141,7 @@ for file in tqdm(files.iterrows()):
     content = file[1]['Path']
     try:
         df1 = parse_excel_table(
-            content, '.*строительстве.*', 'A:A')
+            content, '.*строительстве.*|.*подключ.*', 'A:A')
         add_metadata(df1, file[1])
         new_wells = pd.concat([new_wells, df1])
     except Exception as e:
@@ -176,7 +177,7 @@ some = '1'
 float(some)
 
 book = xw.Book(p.joinpath
-               (r'2007\Сентябрь 2007\рапорт форма 1 за сентябрь скорректированный.xls'))
+               (r'K:\2023\UNGKM\Data Achimgas\МЭРы\2008\Август 2008\Ежемесячный рапорт форма 1 за август.xls'))
 
 book = xw.Book(p.joinpath
                (r'2021\09\Эксплуатационный рапорт\Эксплуатационный рапорт 04-10-2021 10-28.xlsx'))
@@ -190,13 +191,17 @@ book.app.kill()
 
 df = find_excel_row(sheet, '1', 'A:A')
 df = df.options(pd.DataFrame, expand='down').value
-df = parse_excel_table(p.joinpath
-                       (r'2007\Сентябрь 2007\рапорт форма 1 за сентябрь скорректированный.xls'),
+df = parse_excel_table(r'K:\2023\UNGKM\Data Achimgas\МЭРы\2008\Апрель 2008/Ежемесячный рапорт форма 1 за апрель.xls',
                        '1', 'A:A')
 
-df1 = parse_excel_table(p.joinpath
-                        (r'2017\09\Эксплуатационный рапорт\Ежемесячный рапорт 03-10-2017 10-12.xlsx'),
-                        '.*строительстве.*', 'A:A')
+df
+p = Path(r'K:\2023\UNGKM\Data Achimgas\МЭРы')
+df1 = parse_excel_table(p.joinpath(
+    r'2009\Февраль\Эксплуатационный рапорт за февраль 2009\Ежемесячный рапорт форма  за февраль 2009.xls'),
+    '.*строительстве.*|.*подключ.*', 'A:A')
+
+df1
+
 df1.isinstance(pd.DataFrame())
 
 find_excel_row(sheet, '[Дд]ействующий.*', 'A:A')

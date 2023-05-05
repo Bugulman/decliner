@@ -3,6 +3,12 @@ def hyperbolic(t, qi, di, b):
   Hyperbolic decline function
   """
   import numpy as np
+  if b > 1:
+    b=1
+  elif b<0:
+    b=0
+  else:
+    b=b
   return qi / (np.abs((1 + b * di * t))**(1/b))
 
 def arps_fit(t, q, plot=None):
@@ -22,9 +28,7 @@ def arps_fit(t, q, plot=None):
   from scipy.optimize import curve_fit
   import matplotlib.pyplot as plt
 
-  def hyperbolic(t, qi, di, b):
-    return qi / (np.abs((1 + b * di * t))**(1/b))
-  
+ 
   def rmse(y, yfit):
     N = len(y)
     return np.sqrt(np.sum(y-yfit)**2 / N)
