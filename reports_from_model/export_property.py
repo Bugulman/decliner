@@ -1,17 +1,13 @@
 # Automaticaly recalculate=false
 # Single model=false
-# пишите здесь ваш код
-# пишите здесь ваш код
-# пишите здесь ваш код
-import oily_report as olr
 import os
-import time
 import csv
 import pandas as pd
 
 
 date = '01.01.2013'
 parametr = 'permx'
+m = get_model_by_name('BLACK_OIL_DEMO')
 # Для работы скрипта выгружаем из модели wellpick файлы с параметром по x:y:z и i:j:k
 # данные по требуемому параметру с координатами x y
 dept_file = 'MD.inc'
@@ -22,12 +18,23 @@ zone_file = 'ZONE_wellpicks_ijk.inc'
 zone_dict = {1: 'zone1',
              2: 'zone2'}
 
-olr.create_report_dir(path=get_project_folder())
+
+def create_report_dir(path):
+    '''Creates a result folder and sets it by default when writing files
+        path = r let to the model's sensor'''
+    if os.path.exists((path+r'\\reports')):
+        os.chdir(path+r'\\reports')
+    else:
+        os.chdir(path)
+        os.mkdir('reports')
+        os.chdir(path+r'\\reports')
+
+
+create_report_dir(path=get_project_folder())
 print(os.getcwd())
 
 # формирование информации из модели
 
-m = get_model_by_name('BLACK_OIL_DEMO')
 t = [x for x in get_all_timesteps() if x.name == date]
 t = t[0]
 

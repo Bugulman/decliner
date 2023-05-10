@@ -130,6 +130,7 @@ for w in project_wells:
     print(f' скважина {w.name} ЧДД {round(float(npv_gr[w, steps[-1]]),0)} \
                 ИДДЗ {round(float(iddz_gr[w, steps[-1]]),2)}')
 
+
 export(oil_prod_gr, name='Year_oil_production', units='liquid_surface_volume')
 export(liq_prod_gr, name='Year_liq_production', units='liquid_surface_volume')
 export(cash_gr, name='Выручка', units='diametr')

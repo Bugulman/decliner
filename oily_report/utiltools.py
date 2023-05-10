@@ -1,14 +1,10 @@
 import pandas as pd
+import numpy as np
 import sqlalchemy
 from slugify import slugify
+import calendar
 from pandas.tseries.offsets import MonthBegin
-
-engine = sqlalchemy.create_engine(
-            'postgresql://test:test@localhost:5434/test')
-
-
-frame = pd.read_excel(r'ГТМ_база.xlsx', sheet_name='Итог')
-hist = pd.read_sql('hist', con=engine)
+import os
 
 
 def frame_to_psql(df, con_str, table_name):
@@ -18,7 +14,7 @@ def frame_to_psql(df, con_str, table_name):
     table_name-имя таблицы в БД
     'postgresql://test:test@localhost:5434/test'"""
     engine = sqlalchemy.create_engine(
-            con_str)
+        con_str)
     df.to_sql(name=table_name, con=engine)
 
 
@@ -61,7 +57,7 @@ def lang_convert(df, coll_name):
     без осуществления перевода.
     На вход DataFrame и название колонки"""
     df[coll_name] = df[coll_name].apply(lambda x:
-                                      slugify(x, lowercase=False)
+                                        slugify(x, lowercase=False)
                                         if isinstance(x, str) else x)
 
 
@@ -71,14 +67,14 @@ def gtm_effect(name, gtm_date, hist_table, target_period=12):
     name - имя скважины
     gtm_date - дата проведения ГТМ в формате datetime
     hist_table - dataframe с историей добычи
-    target_period - количество месяцев до и после ГТМ, 
+    target_period - количество месяцев до и после ГТМ,
         в которое будет проводится сравнение"""
 
     period = pd.date_range(start=gtm_date-target_period*MonthBegin(),
                            periods=target_period*2, freq='MS')
     wellhist = hist_table[hist_table.well == name]
     df = wellhist[wellhist.date.isin(period)].groupby(
-            wellhist.date > gtm_date).mean()
+        wellhist.date > gtm_date).mean()
     df['well'] = name
     df['date'] = gtm_date
     df.index.name = 'period'
@@ -94,8 +90,6 @@ def gtm_pivot_table(frame, hist):
                           gtm_effect(x.well, x.date, hist_table=hist), axis=1)
     effects = pd.concat(effects.to_list())
     res = pd.pivot_table(effects, columns='period', index=['well', 'date'],
-                   values=['oil', 'gas', 'water', 'wefac'],
-                   aggfunc='mean')
+                         values=['oil', 'gas', 'water', 'wefac'],
+                         aggfunc='mean')
     return res
-
-
