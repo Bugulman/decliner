@@ -5,8 +5,6 @@ from pathlib import Path
 import re
 import pandas as pd
 from sqlalchemy import create_engine
-from tqdm import tqdm
-import numpy as np
 import pprint
 import sqlite3
 import csv
