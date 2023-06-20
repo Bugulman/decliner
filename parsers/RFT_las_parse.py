@@ -151,7 +151,6 @@ las = Path(
 las = Path(
     r'/cluster3/public/2023/UNGKM/Data Achimgas/ПГИ/4 куст/А 4-6/23.06.2017/А4-6_Уренгойское_ПГИ_2017_/4-6_Ureng_rgd_24.06.2017.las'
 )
-las
 
 las_file = ls.read(las)
 las_file.sections.keys()  # ['Other information']
