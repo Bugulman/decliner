@@ -25,6 +25,15 @@ for file in p.glob('**/*.xls*'):
 engine = create_engine(
     'postgresql://test:test@localhost:5434/ungkm')
 # %%
+# %%
+
+# NOTE: подключение к базе sqllite
+engine = create_engine('sqlite:///press.db')
+
+p = Path(r'/cluster3/public/2023/UNGKM/Data Achimgas/МЭРы')
+
+# %%
+
 
 # обрабатвает файлы для получения списка экселей с названием листов
 files = []
@@ -49,7 +58,8 @@ print(prod_files)
 # %%
 
 well_list = ['действующий фонд',
-             'бездействующий фонд', 'ликвидированный фонд']
+             'бездействующий фонд', 'ликвидированный фонд',
+             'ожидающие']
 
 # %%
 
@@ -236,20 +246,3 @@ temp
 
 start_cell = sheet['A:A'].value.index(temp[0][0])
 start_cell
-
-# %%
-
-book = openpyxl.load_workbook(p.joinpath
-                              (r'2007\Октябрь 2007\рапорт форма 1 за октябрь скорректированный.xls'))
-
-# %%
-book = xlrd.open_workbook(p.joinpath
-                          (r'2007\Октябрь 2007\рапорт форма 1 за октябрь скорректированный.xls'))
-# %%
-
-mylist = [1, 2, 3, 4, 5]
-
-for i in tqdm(mylist):
-    time.sleep(1)
-
-# %%
