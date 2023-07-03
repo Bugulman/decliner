@@ -1,16 +1,38 @@
 import getpass
 import oily_report.dca_per_well as dca
 import logging
-import os
-import calendar
 from datetime import datetime
 import numpy as np
 import pandas as pd
 # import sqlalchemy
 from scipy import signal
 
-logging.basicConfig(level=logging.INFO, filename=r"d:\work\python\decliner\py_log.log", filemode="w",
+logging.basicConfig(level=logging.INFO,
+                    filename=r"d:\work\python\decliner\py_log.log",
+                    filemode="w",
                     format="%(asctime)s - %(levelname)s - %(message)s")
+
+
+def graph_name(name):
+    '''Get graph name'''
+    return [k for k, v in globals().items() if v is name][0]
+
+
+def data_from_model(*args, **kwarg):
+    '''Функция создает датафрейм из произольного набора векторов
+    arg - названия требуемых для выгрузки векторов
+    kwarg - словарь для передачи функций и генераторов из навигатора в функцию. См. readme к библиотеке'''
+    m = kwarg['mod']
+    wells = [w.name for w in kwarg['wells']]
+    groups = [w.group for w in kwarg['wells']]
+    steps = [t.to_datetime() for t in kwarg['step']]
+    df = pd.DataFrame(getpass.getuser(), index=[wells, groups], columns=steps)
+    df = df.melt(ignore_index=False).reset_index()
+    df.columns = ['well', 'group', 'date', 'user']
+    graph_names = list(map(graph_name, args))
+    for arg in zip(args, graph_names):
+        df[arg[1]] = np.array(arg[0][m]).flatten('F')
+    return df
 
 
 def dataframe_creater(*args, start='01.01.1950', **kwarg):
@@ -114,17 +136,6 @@ def adapt_report_frame(frame, **kwarg):
     final['liq_adapt'] = well_cum['lik'].value_counts(normalize=True)[1]*100
     final['wells_adapt'] = well_cum['oil'].value_counts(normalize=True)[1]*100
     return pd.DataFrame(final, index=[1])
-
-
-def create_report_dir(path):
-    '''Creates a result folder and sets it by default when writing files
-        path = r let to the model's sensor'''
-    if os.path.exists((path+r'\\reports')):
-        os.chdir(path+r'\\reports')
-    else:
-        os.chdir(path)
-        os.mkdir('reports')
-        os.chdir(path+r'\\reports')
 
 
 def interpolate_press_by_sipy(frame, a=2, b=0.1):
@@ -282,29 +293,6 @@ def model_frame(**kwarg):
 
 # FAQ: Тут включаются функции с анализом падения добычи
 
-def worked_time(frame, delta=0):
-    """Добавляет столбец с временем работы"""
-    frame["Time"] = frame["date"] - frame["date"].min()
-    frame["Time"] = frame["Time"] / np.timedelta64(1, "D")
-    frame["Time"] = frame["Time"] + delta
-    return frame
-
-
-def day_in_month(i):
-    """Количество дней в дате i - дата"""
-    return calendar.monthrange(i.year, i.month)[1]
-
-
-def montly_dob(frame, summ_list=['QOIL', 'QWAT', 'QLIQ', 'QWIN', 'SQOIL', 'SQLIQ']):
-    """Добавляет столбецы с ежемесячной и накопленной добычей к датафрейму"""
-    for i in summ_list:
-        name = 'MON'+i
-        name2 = 'SUMM'+i
-        frame[name] = frame['date'].apply(day_in_month)*frame[i]*frame['WEFA']
-        frame[name2] = frame[name].cumsum()/1000
-    return frame
-
-
 def prod_check(func):
     """Декаратор для проверки датафреймов на наличие добычи"""
     def _prod_check(frame, start_year, *arg, **kwarg):
@@ -314,7 +302,8 @@ def prod_check(func):
             res = func(frame, start_year, *arg, **kwarg)
             return res
         else:
-            print(f'Скважина {frame.well.unique()} без добычи')
+            print(
+                f'Скважина {frame.well.unique()} без добычи')
             pass
     return _prod_check
 
@@ -341,7 +330,8 @@ def decline_fit(frame, start_year, target_coll='QOIL', to_df=False):
             sub["date"], sub[target_coll], plot=False
         )
     except:
-        print(f"Ошибка определения темпа для скважины {name}")
+        print(
+            f"Ошибка определения темпа для скважины {name}")
         qi, di, b, RMSE = [last_deb, 0.2, 0.2, 0.99]
     logging.info(
         f"Скважина {name[0]}, начало прогноза-{sub.date.min()}, qi-{qi}, Di-{di}, {b}"
