@@ -120,16 +120,22 @@ def res_eng (variables = res_eng_variables):
         end_wf_item (index = 2)
 
 
-    begin_wf_item (index = 3, is_custom_code = True, name = "через библиотеку")
+    begin_wf_item (index = 3)
+    wells_production_table_calculate_wef_by_operation_time (table=find_object (name="hist",
+          type="gt_wells_production_data"))
+    end_wf_item (index = 3)
+
+
+    begin_wf_item (index = 4, is_custom_code = True, name = "через библиотеку")
     import getpass
     import os
     import oily_report as olr
     from datetime import datetime
-
+    import pandas as pd
 
 
     keyword = {'wells': get_well_filter_by_name (name='14').get_wells (),
-               'mod': get_all_wells_production_tables ()[0],
+               'mod': get_wells_production_table_by_name (name='hist'),
                'step': get_all_timesteps()}
 
     user = getpass.getuser()
@@ -138,25 +144,96 @@ def res_eng (variables = res_eng_variables):
     paramert_list= ['oil', 'water', 'gas', 'water_injection', 'bhp', 'thp', 'wefac']
 
 
-    frame = olr.df_from_histtab(paramert_list=paramert_list, start='01.01.2010', **keyword)
+    frame = olr.df_from_histtab(paramert_list=paramert_list, start='01.01.1950', **keyword)
     frame.reset_index(inplace=True)
-    print(frame.head())
+
     smooth_frame = olr.histor_smoothing(frame, gas=True)
-    #dca_param = olr.decline_fit(smooth_frame, start_year='2010')
+    smooth_frame.to_csv(f'smoooth_wells_{user}_{date}.csv')
 
+    predict = pd.DataFrame()#columns=['well', 'date', 'SOIL', 'QOIL', 'Time_x', 'Time_y', 'rate', 'month_prod'])
+    to_table = pd.DataFrame()
 
-    names = df.loc[(df.status == 'prod') & (df['date'] > '2010'), 'well'].unique()
-    #predict = pd.DataFrame(columns=['well', 'date', 'SOIL', 'QOIL', 'Time_x', 'Time_y', 'rate', 'month_prod'])
-    to_table = pd.DataFrame(columns=['well', 'first_date', 'qi', 'Di', 'bi', 'Dterm'])
     for name, fr in smooth_frame.groupby('well'):
-    	dca_param = olr.decline_fit(fr)
-    	# predict = pd.concat([predict, well_predict], ignore_index=True)
+    	dca_param = olr.decline_fit(fr, '2000',target_coll='QGAS')
+    	try:
+    		well_predict = olr.prod_predict(long=120, **dca_param)
+    		dca_param = pd.DataFrame([dca_param])
+    	except:
+    		print(f'Нет профиля для скважины {name}')
+    	predict = pd.concat([predict, well_predict], ignore_index=True)
     	to_table = pd.concat([to_table, dca_param], ignore_index=True)
 
 
 
-    smooth_frame.to_csv(f'smoooth_wells_{user}_{date}.csv')
+    predict.to_csv(f'predicted_{user}_{date}.csv')
+    to_table.to_csv(f'dca_params_{user}_{date}.csv')
     print(os.getcwd())
-    end_wf_item (index = 3)
+    end_wf_item (index = 4)
+
+
+    begin_wf_item (index = 5)
+    table_import (splitter=True,
+          file_names=["reports/dca_params_reg16_02.01.23.csv"],
+          splitter2=True,
+          delimiter="comma")
+    end_wf_item (index = 5)
+
+
+    begin_wf_item (index = 6)
+    wells_history_import_simple_table_format (wells=find_object (name="Wells",
+          type="gt_wells_entity"),
+          well_searcher="name",
+          well_production=find_object (name="dca",
+          type="gt_wells_production_data"),
+          reload_all=False,
+          splitter=True,
+          file_names=["reports/predicted_reg16_04.01.23.csv"],
+          tabulator=TableFormat (separator="comma",
+          comment="",
+          skip_lines=1,
+          columns=["skip", "Date", "skip", "Gas rate", "Well"]),
+          placeholder="-",
+          zero_missing_columns=True,
+          efficiency_factor_units="Relative",
+          date_format="YYYY-MM-DD",
+          use_start_date=False,
+          start_date=datetime (year=2022,
+          month=10,
+          day=6,
+          hour=0,
+          minute=0,
+          second=0),
+          time_format="HH:MM:SS",
+          date_filter=False,
+          first_date=datetime (year=2022,
+          month=10,
+          day=6,
+          hour=0,
+          minute=0,
+          second=0),
+          last_date=datetime (year=2022,
+          month=10,
+          day=6,
+          hour=0,
+          minute=0,
+          second=0),
+          liquid_rate_units="sm3/day",
+          gas_rate_units="sm3/day",
+          reservoir_rate_units="rm3/day",
+          liquid_volume_units="sm3",
+          gas_volume_units="sm3",
+          reservoir_volume_units="rm3",
+          pressure_absolute_units="bara",
+          pressure_units="bara",
+          enthalpy_units="kJ/kg-M",
+          temperature_units="C",
+          mass_concentration_units="kg/sm3",
+          molar_rate_units="kg-m/day",
+          reaction_energy_units="kJ/day",
+          liquid_liquid_units="sm3_div_sm3",
+          fraction_units="fraction",
+          liquid_gas_units="sm3_div_sm3",
+          gas_liquid_units="sm3_div_sm3")
+    end_wf_item (index = 6)
 
 
