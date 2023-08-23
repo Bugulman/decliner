@@ -2,7 +2,6 @@ import re
 from pathlib import Path
 import re
 import pandas as pd
-from sqlalchemy import create_engine
 import openpyxl
 import csv
 from datetime import datetime
@@ -90,6 +89,30 @@ def convert_excel_KVD(excel_file: Path):
     return df
 
 
+def convert_excel_dev(excel_file: Path):
+    wb = openpyxl.load_workbook(excel_file)
+    sheet = wb.get_sheet_by_name(wb.sheetnames[0])
+    last_row = get_noblank_rows(sheet)
+    name = sheet.cell(1, 1).value
+    df = pd.read_excel(excel_file, skiprows=5,
+                       nrows=last_row-3, usecols=(0, 1, 2, 3),
+                       names=["date", "time", "press", "temre"])
+    if df.date.dtypes == '0':
+        df.date = df.date.astype(str)+' '+df.time.astype(str)
+        df.date = pd.to_datetime(df.date, errors='coerce')
+    elif df.date.dtypes == '<M8[ns]':
+        df.date = pd.to_datetime(df.date, errors='coerce')
+    else:
+        print(f'не удалось обработать файл{excel_file}')
+    df = df[df.date.notnull()]
+    df.press = pd.to_numeric(df.press, errors='coerce')
+    df.set_index(df.date, inplace=True)
+    df = df_resample(df).reset_index()
+    df.insert(0, 'well', name)
+    df['path'] = str(excel_file)
+    return df
+
+ 
 def convert_csv_KVD(file_path: Path):
     header = get_wells(str(file_path))
     date = get_date_from_filename(file_path)
