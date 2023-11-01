@@ -1,10 +1,10 @@
-#  Этот файл был сгенерирован тНавигатор v23.1-3514-g7707db7.
+#  Этот файл был сгенерирован тНавигатор v23.2-3636-gbbb9c73.
 #  Copyright (C) Рок Флоу Динамикс 2005-2023.
 #  Все права защищены.
 
 # This file is MACHINE GENERATED! Do not edit.
 
-#api_version=v0.0.91a
+#api_version=v0.0.94a
 
 from __main__.tnav.workflow import *
 from tnav_debug_utilities import *
@@ -38,7 +38,7 @@ def Import_csv_into_tnav_table (variables = Import_csv_into_tnav_table_variables
     file = 'paht'
     set_var_type (n = "file", t = "STRING", it = "PY_EXPR", val = file)
     variables["FILE"] = file
-    table_name = 'RFT'
+    table_name = 'KVD_interp'
     set_var_type (n = "table_name", t = "STRING", it = "PY_EXPR", val = table_name)
     variables["TABLE_NAME"] = table_name
     delimert = ';'
