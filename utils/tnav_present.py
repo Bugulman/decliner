@@ -7,10 +7,9 @@ from pathlib import Path
 
 
 # %%
-
-presentation_template = 'type_slides_ru_2023.pptx'
+dfadaf  
+presentation_template = 'ГДМ_01_10.pptx'
 ready_folder_name = 'ready_presentations'
-image = 'Шаблоны_графиков_1_01-02-2011.jpg'
 
 if not os.path.exists(ready_folder_name):
     os.mkdir(ready_folder_name)
@@ -18,16 +17,10 @@ if not os.path.exists(ready_folder_name):
 # %%
 
 prs = Presentation(presentation_template)
-path = Path(os.getcwd())
-path = path.joinpath(ready_folder_name)
-
-# %%
-
-
-def get_pic_in_folder(path):
-    pic_files = []
+path = Path(os.getcwd()) # %%
+def get_pic_in_folder(path): pic_files = []
     for file in os.listdir(path):
-        if file.endswith('.jpg'):
+        if file.endswith('.JPG'):
             pic_files.append(file)
     return pic_files
 # %%
@@ -48,12 +41,18 @@ def add_picture_to_slide(slide, picture_path):
 
 
 # %%
-# %%
-pictures = get_pic_in_folder(path)
 
+pictures = get_pic_in_folder(path / 'reports')
+pictures[0]
+
+# path = path.joinpath(ready_folder_name)
+# path.joinpath('Screenshots', pictures[0])
+# %%
 for picture in pictures:
-    slide1 = create_slide_with_title(16, picture.split('.')[0])
-    add_picture_to_slide(slide1, picture)
+    slide1=create_slide_with_title(16, picture.split('.')[0])
+    add_picture_to_slide(slide1, str(path.joinpath('reports', picture)))
+
+# %%
 # slide1 = create_slide_with_title(16, '1 area')
 # add_picture_to_slide(slide1, image)
 prs.save(path.joinpath('ready_presentation.pptx'))
