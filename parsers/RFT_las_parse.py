@@ -23,7 +23,7 @@ engine = create_engine('sqlite:///press.db')
 # WARN:Прописываем пути где хотим распаковать все архивы
 
 root_dir = Path(
-    r'/cluster3/public/2023/UNGKM/Data Achimgas/ПГИ')
+    r'/data2/public/2023/UNGKM/Data Achimgas/ПГИ')
 temp_dir = root_dir.joinpath('unzipped_files')
 # %%
 
@@ -33,11 +33,13 @@ def unzip_file(path, target_path):
         zip_file.extractall(target_path)
 
 
+# %%
 def unrar_file(path, target_path):
     with rarfile.RarFile(path, 'r') as rar_file:
         rar_file.extractall(target_path)
 
 
+# %%
 def un7z_file(path, target_path):
     with py7zr.SevenZipFile(path, 'r') as z:
         z.extractall(target_path)
@@ -80,6 +82,7 @@ def get_metadata(las_file):
     return wellname, logdate
 
 
+# %%
 def get_date(string_with_date, regex=r'\d{1,2}\.\d{2}\.\d{2,4}'):
     """Функция принимает строку и вытаскивает все даты"""
     re_date = re.compile(regex)
@@ -93,6 +96,7 @@ def get_date(string_with_date, regex=r'\d{1,2}\.\d{2}\.\d{2,4}'):
     return date
 
 
+# %%
 def get_curves(las_file, regex=r'.*[Mm]anom[a-z]*|.*[Dd]ebit[a-z]*|.*[Rr]ashod[a-z]*|.*[Ss]hum[a-z]*|.*[Tt]ermo'):
     """docstring for get_curves"""
     aim = re.compile(regex)
@@ -101,6 +105,7 @@ def get_curves(las_file, regex=r'.*[Mm]anom[a-z]*|.*[Dd]ebit[a-z]*|.*[Rr]ashod[a
     return tar_curves
 
 
+# %%
 def rft_las_parse(file):
     """Функция переводит RFT исследования из формата las в df"""
     las = ls.read(file)
