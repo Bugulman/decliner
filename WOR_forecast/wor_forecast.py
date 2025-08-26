@@ -28,26 +28,31 @@ class WOR_forecaster():
         self.R = Np/self.N
 
     def sw_calc(self):
-        """Расчитываем среднее насыщение как долю запасов пласта, отобранных и замещенных водой 
-        Sw = Swav при значение lam=1, в противном случае происходит запаздывание насыщение 
-        на фронте относительно среднего насыщения по пласту, что в общем то логично, если 
-        вспомнить методику Велджа"""
+        """Расчитываем среднее насыщение"""
         self.Swav = self.R*(1-self.Swi)+self.Swi
         self.Sw = self.lam*self.Swav+(1-self.lam)*(1-self.Sor)
-        # self.Swd = (self.Sw-self.Swi)/(1-self.Swi-self.Sor)
 
-    def lin_coef_calc(self, lam):
+    def lin_coef_calc(self, lam, R):
         """На основе из Бакл-Лев уравнения выводим коэффициенты для линизации уравнения"""
-        self.x1 = np.log(lam*self.c*self.R+1-lam)
-        self.x2 = np.log(lam - self.c*self.R+1*lam)
+        # Защита от отрицательных значений под логарифмом
+        term1 = lam * self.c * R + 1 - lam
+        term2 = lam - self.c * R * lam  # Исправленная формула
+        
+        # Обеспечиваем положительные значения для логарифма
+        term1 = np.maximum(term1, 1e-10)  # минимальное положительное значение
+        term2 = np.maximum(term2, 1e-10)  # минимальное положительное значение
+        
+        x1 = np.log(term1)
+        x2 = np.log(term2)
+        
+        return x1, x2
 
-    def watercut_calc(self,lam, nw, no):
+    def watercut_calc(self, R, lam, nw, no):
         """Считаем обводненность от КИН"""
-        # self.sw_calc()
-        self.lin_coef_calc(lam)
-        self.wor = np.exp(self.a+nw*self.x1-no*self.x2) # wor calculationsо
-        self.fw = 1-1/(self.wor+1)
-        return self.fw
+        x1, x2 = self.lin_coef_calc(lam, R)
+        wor = np.exp(self.a + nw * x1 - no * x2)
+        fw = 1 - 1 / (wor + 1)
+        return fw
 
     def get_watercut(self):
         """Считаем обводненность от КИН"""
@@ -57,46 +62,81 @@ class WOR_forecaster():
 
     def wct_fitting(self):
         """Подгонка параметров модели к историческим данным"""
-        # Определяем функцию для подгонки с правильной сигнатурой
-        def fit_func(R, lam, nw, no):
-            """Функция для curve_fit с правильными параметрами"""
-            self.lin_coef_calc(lam)
-            wor = np.exp(self.a + nw * self.x1 - no * self.x2)
-            fw = 1 - 1 / (wor + 1)
-            return fw
+        # Фильтруем данные, где R > 0 и wcth в допустимом диапазоне
+        valid_mask = (self.R > 0) & (self.wcth >= 0) & (self.wcth <= 1)
+        R_valid = self.R[valid_mask]
+        wcth_valid = self.wcth[valid_mask]
+        
+        if len(R_valid) == 0:
+            print("Нет валидных данных для подгонки")
+            return None, None
         
         # Задаем начальные значения параметров
         initial_guess = [self.lam, 1.0, 1.0]  # lam, nw, no
         
-        # Задаем границы параметров (опционально)
-        bounds = ([0.1, 0.1, 0.1], [2.0, 5.0, 5.0])  # нижние и верхние границы
+        # Задаем границы параметров
+        bounds = ([0.8, 0.1, 0.1], [1.5, 10.0, 10.0])  # более узкие границы для стабильности
         
         try:
             # Выполняем подгонку
             popt, pcov = curve_fit(
-                fit_func, 
-                self.R, 
-                self.wcth, 
+                self.watercut_calc, 
+                R_valid, 
+                wcth_valid, 
                 p0=initial_guess,
                 bounds=bounds,
-                maxfev=10000  # увеличиваем количество итераций
+                maxfev=5000,
+                method='trf'  # метод, более устойчивый к ошибкам
             )
             
             # Обновляем параметры модели
-            self.lam, self.nw, self.no = popt
+            self.lam_fit, self.nw_fit, self.no_fit = popt
             print(f"Оптимальные параметры: lam={popt[0]:.4f}, nw={popt[1]:.4f}, no={popt[2]:.4f}")
             
             return popt, pcov
             
         except Exception as e:
             print(f"Ошибка при подгонке: {e}")
+            print("Попробуйте изменить начальные значения или границы параметров")
             return None, None
-    
-    
+
+    def plot_results(self, popt=None):
+        """Визуализация результатов"""
+        plt.figure(figsize=(12, 5))
         
+        # Исторические данные
+        plt.subplot(1, 2, 1)
+        plt.plot(self.R, self.wcth, 'bo-', label='Исторические данные', markersize=4)
+        
+        # Если есть подобранные параметры, строим кривую
+        if popt is not None:
+            lam_fit, nw_fit, no_fit = popt
+            fw_fitted = self.watercut_calc(self.R, lam_fit, nw_fit, no_fit)
+            plt.plot(self.R, fw_fitted, 'r-', label='Подгонка модели', linewidth=2)
+        
+        plt.xlabel('КИН (R)')
+        plt.ylabel('Обводненность')
+        plt.title('Подгонка модели обводненности')
+        plt.legend()
+        plt.grid(True)
+        
+        # График остатков
+        if popt is not None:
+            plt.subplot(1, 2, 2)
+            residuals = self.wcth - fw_fitted
+            plt.plot(self.R, residuals, 'go-', markersize=4)
+            plt.axhline(y=0, color='r', linestyle='--')
+            plt.xlabel('КИН (R)')
+            plt.ylabel('Остатки')
+            plt.title('Остатки подгонки')
+            plt.grid(True)
+        
+        plt.tight_layout()
+        plt.show()   
+    
     # %%
-    df = pd.read_csv('/home/albert/Документы/decliner/test_data/test_wor_func.csv')
-    field = WOR_forecaster(**{'Swi': 0.3, 
+df = pd.read_csv('/home/albert/Документы/decliner/test_data/test_wor_func.csv')
+field = WOR_forecaster(**{'Swi': 0.3, 
                               'Sor': 0.3,
                               'muo':2.47,
                               'muw':0.4,
@@ -105,5 +145,7 @@ class WOR_forecaster():
                               'N': 18670*2,
                               'lam': 1.01})
     # df
-    field.set_hist_data(df)
-    field.R
+field.set_hist_data(df)
+# %%
+popt, pcov = field.wct_fitting()
+field.plot_results(popt)
