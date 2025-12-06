@@ -98,7 +98,7 @@ class WOR_forecaster:
         hist_df["Comment"] = "history_data"
         frame = np.column_stack((RF_predict, Swav_predict, Sw_predic, fw_predict))
         frame = pd.DataFrame(frame, columns=["R", "Swav", "Sw", "fw_model"])
-        frame["fw_hist"] = np.NAN
+        frame["fw_hist"] = np.nan
         frame["Comment"] = "forecast"
         frame = pd.concat([hist_df, frame])
         frame = frame.query("fw_model<0.98")
@@ -291,25 +291,3 @@ class WOR_forecaster:
         )
         plt.tight_layout()
         plt.show()
-
-
-# %%
-df = pd.read_csv("/home/albert/Документы/decliner/test_data/test_wor_func.csv")
-oil_f = WOR_forecaster(
-    **{
-        "Swi": 0.3,
-        "Sor": 0.3,
-        "muo": 2.47,
-        "muw": 0.4,
-        "krw": 0.2,
-        "kro": 1,
-        "N": 18680 * 2,
-        "lam": 1.01,
-    }
-)
-# df
-oil_f.set_hist_data(df)
-# %%
-df = oil_f.wct_forecast()
-df
-oil_f.detailed_watercut_plot(df)

@@ -16,10 +16,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-# dependencies = [  # Список зависимостей, если они есть
+dependencies = [  # Список зависимостей, если они есть
     # "requests >= 2.25.0",
-    # "numpy",
-# ]
+    "numpy",
+    "slugify"
+]
 
 [project.urls]
 Homepage = "https://github.com/Bugulman/decliner"
