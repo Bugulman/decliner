@@ -1,10 +1,10 @@
 from files_func import hist_table_prepare
-from smoother import histor_smoothing
+from library.oily_report.smoother import histor_smoothing
 import pandas as pd
 import logging
 import pickle
 from oily_report import interpolate_press_by_sipy
-from DCA import prod_predict, declane_fit, predict_viz
+from library.oily_report.decline_curve_analysis import DeclineCurveAnalysis
 from tqdm import tqdm
 
 logging.basicConfig(level=logging.DEBUG,format = "%(asctime)s - %(levelname)s - %(message)s")

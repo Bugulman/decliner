@@ -166,3 +166,27 @@ def histor_smoothing(df, gas=False):
     df.loc[(df["SBHPH"] <= 0), "SBHPH"] = np.NaN
     df["SBHPH"].fillna(method="bfill")
     return df
+
+
+def prod_smooth_enhanced(frame, a=15, b=0.1):
+    """Enhanced productivity smoothing function (consolidated from utils version)
+    Чем выше a и ниже b тем сильнее сглаживание.
+    """
+    b, a = signal.butter(a, b)
+    if frame.shape[0] > 12:
+        frame.index = frame["date"]
+        frame.loc[(frame["SPROD"] < 0), "SPROD"] = np.NaN
+        frame.loc[(frame["SPROD"] > frame["SPROD"].quantile(0.8)), "SPROD"] = np.NaN
+        frame.loc[(frame["SPROD"] < frame["SPROD"].quantile(0.2)), "SPROD"] = np.NaN
+        frame["SPROD"] = signal.filtfilt(
+            b, a, frame["SPROD"].interpolate(method="time").fillna(method="bfill")
+        )
+        frame.loc[(frame["status"] == "not_work"), "SPROD"] = 0
+        frame.loc[(frame["status"] == "inj"), "SPROD"] = 0
+        temp = frame["SPROD"].groupby(frame.index.year).agg("median")
+        temp.name = "PROD_AV"
+        frame = pd.merge(frame, temp, left_on=frame.index.year, right_on=temp.index)
+        frame.reset_index(drop=True, inplace=True)
+    else:
+        frame["SPROD"] = np.NaN
+    return frame

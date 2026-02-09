@@ -1,15 +1,95 @@
 
+# Database files
+*.db
+*.duckdb
+*.sqlite
+*.sqlite3
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Project specific
+data/
+reports/
+py_log.log
+for_test
+node_modules
+
+# Legacy entries (kept for compatibility)
 data/Свод.xlsx
 data/ГДИ.xlsx
 data/ГТМ_ГФИ.xlsx
-notebooks/.ipynb_checkpoints/DCA_banch-checkpoint.ipynb
-notebooks/.ipynb_checkpoints/drilling_analitic-checkpoint.ipynb
 data/onewell.pickle
-notebooks/.ipynb_checkpoints
-__pycache__
 oilyreports.egg-info
 oilyreport.egg-info
-for_test
-
 oily_report.egg-info
-node_modules
