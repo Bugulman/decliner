@@ -1,9 +1,10 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from math import log
-from scipy.optimize import curve_fit
 from dataclasses import dataclass, field
+from math import log
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy.optimize import curve_fit
 
 
 @dataclass
